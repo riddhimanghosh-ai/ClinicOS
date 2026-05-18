@@ -42,7 +42,16 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   for (const n of portfolio.notes) {
     const bySession = portfolio.sessions.find(s => s.id === n.session_id);
     const date = bySession?.session_date ?? n.created_at.slice(0, 10);
-    if (visitMap.has(date) && n.raw_text.trim()) {
+    // Create visitMap entry if it doesn't exist (for notes without sessions)
+    if (!visitMap.has(date)) {
+      visitMap.set(date, {
+        service: "Post-consult capture",
+        doctor: null,
+        sessionType: "consultation",
+        noteTexts: [], rxLines: [], tagLine: null,
+      });
+    }
+    if (n.raw_text.trim()) {
       visitMap.get(date)!.noteTexts.push(n.raw_text.trim());
     }
   }
@@ -50,27 +59,39 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   // Match prescriptions to visits by date
   for (const rx of portfolio.prescriptions) {
     const date = rx.created_at.slice(0, 10);
-    if (visitMap.has(date)) {
-      const itemsStr = rx.items?.map((it: any) => `${it.name} (${it.instructions})`).join(", ") ?? "";
-      const line = [itemsStr, rx.regimen_notes].filter(Boolean).join(" — ");
-      if (line) visitMap.get(date)!.rxLines.push(line);
+    if (!visitMap.has(date)) {
+      visitMap.set(date, {
+        service: "Post-consult capture",
+        doctor: null,
+        sessionType: "consultation",
+        noteTexts: [], rxLines: [], tagLine: null,
+      });
     }
+    const itemsStr = rx.items?.map((it: any) => `${it.name} (${it.instructions})`).join(", ") ?? "";
+    const line = [itemsStr, rx.regimen_notes].filter(Boolean).join(" — ");
+    if (line) visitMap.get(date)!.rxLines.push(line);
   }
 
   // Match clinical tags to visits by date
   for (const t of portfolio.tags) {
     const date = t.created_at.slice(0, 10);
-    if (visitMap.has(date)) {
-      const tagLine = [
-        t.primary_concern && `Concern: ${t.primary_concern.replace(/_/g, " ")}`,
-        t.barrier_status && `Barrier: ${t.barrier_status}`,
-        t.active_acne_status && `Acne: ${t.active_acne_status}`,
-        t.treatment_ready_for && `Ready for: ${t.treatment_ready_for.replace(/_/g, " ")}`,
-        t.next_recommended_service && `Next: ${t.next_recommended_service}`,
-        t.product_adherence_score != null && `Adherence: ${t.product_adherence_score}/10`,
-      ].filter(Boolean).join(" · ");
-      visitMap.get(date)!.tagLine = tagLine || null;
+    if (!visitMap.has(date)) {
+      visitMap.set(date, {
+        service: "Post-consult capture",
+        doctor: null,
+        sessionType: "consultation",
+        noteTexts: [], rxLines: [], tagLine: null,
+      });
     }
+    const tagLine = [
+      t.primary_concern && `Concern: ${t.primary_concern.replace(/_/g, " ")}`,
+      t.barrier_status && `Barrier: ${t.barrier_status}`,
+      t.active_acne_status && `Acne: ${t.active_acne_status}`,
+      t.treatment_ready_for && `Ready for: ${t.treatment_ready_for.replace(/_/g, " ")}`,
+      t.next_recommended_service && `Next: ${t.next_recommended_service}`,
+      t.product_adherence_score != null && `Adherence: ${t.product_adherence_score}/10`,
+    ].filter(Boolean).join(" · ");
+    if (tagLine) visitMap.get(date)!.tagLine = tagLine || null;
   }
 
   // ── Generate bullet points per visit ───────────────────────────────────────
