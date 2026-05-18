@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="ska4_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
+  <filter id="fxa4_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <radialGradient id="hla4_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sha4_0" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#ska4_0)" filter="url(#fxa4_0)"/>
+<rect width="400" height="400" fill="#CC3030" opacity="0.180"/>
+<circle cx="40.6" cy="81.4" r="7.5" fill="#8B2020" opacity="0.57" />
+<circle cx="314.5" cy="90.7" r="8.0" fill="#6B3030" opacity="0.82" />
+<circle cx="32.8" cy="256.3" r="13.2" fill="#6B3030" opacity="0.85" />
+<circle cx="302.3" cy="233.2" r="12.3" fill="#8B2020" opacity="0.68" />
+<circle cx="350.9" cy="60.9" r="13.8" fill="#8B2020" opacity="0.78" />
+<circle cx="273.1" cy="322.3" r="10.8" fill="#8B2020" opacity="0.82" />
+<circle cx="126.3" cy="299.3" r="12.6" fill="#8B2020" opacity="0.66" />
+<circle cx="348.5" cy="218.5" r="10.3" fill="#6B3030" opacity="0.67" />
+<circle cx="82.9" cy="98.4" r="10.3" fill="#8B2020" opacity="0.58" />
+<circle cx="282.8" cy="213.2" r="12.8" fill="#8B2020" opacity="0.78" />
+<circle cx="362.9" cy="345.2" r="3.3" fill="#8B2020" opacity="0.57" />
+<circle cx="39.8" cy="53.6" r="10.1" fill="#8B2020" opacity="0.64" />
+<circle cx="238.2" cy="61.1" r="4.2" fill="#6B3030" opacity="0.75" />
+<circle cx="338.3" cy="226.5" r="14.1" fill="#6B3030" opacity="0.90" />
+<circle cx="311.6" cy="223.3" r="6.3" fill="#6B3030" opacity="0.90" />
+<circle cx="296.3" cy="342.7" r="6.4" fill="#6B3030" opacity="0.84" />
+<circle cx="121.5" cy="186.9" r="8.1" fill="#8B2020" opacity="0.90" />
+<circle cx="89.0" cy="335.3" r="10.4" fill="#8B2020" opacity="0.65" />
+<rect width="400" height="400" fill="url(#hla4_0)"/>
+<rect width="400" height="400" fill="url(#sha4_0)"/>
+</svg>

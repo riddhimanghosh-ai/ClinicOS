@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="skm22_2" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
+  <filter id="fxm22_2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <filter id="pbm22_2"><feGaussianBlur stdDeviation="10"/></filter>
+  <radialGradient id="hlm22_2" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#skm22_2)" filter="url(#fxm22_2)"/>
+<g filter="url(#pbm22_2)"><ellipse cx="161" cy="251" rx="96" ry="62" fill="#5A3008" opacity="0.087" transform="rotate(-9,161,251)"/><ellipse cx="102" cy="221" rx="88" ry="18" fill="#5A3008" opacity="0.087" transform="rotate(6,102,221)"/></g>
+<rect width="400" height="400" fill="url(#hlm22_2)"/>
+</svg>

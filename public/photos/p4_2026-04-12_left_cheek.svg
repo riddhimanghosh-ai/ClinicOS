@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="ska4_4" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
+  <filter id="fxa4_4"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <radialGradient id="hla4_4" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sha4_4" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#ska4_4)" filter="url(#fxa4_4)"/>
+<rect width="400" height="400" fill="#CC3030" opacity="0.036"/>
+<circle cx="42.1" cy="109.5" r="4.5" fill="#8B2020" opacity="0.56" />
+<circle cx="311.0" cy="356.0" r="4.4" fill="#6B3030" opacity="0.89" />
+<circle cx="86.9" cy="133.9" r="3.2" fill="#6B3030" opacity="0.60" />
+<rect width="400" height="400" fill="url(#hla4_4)"/>
+<rect width="400" height="400" fill="url(#sha4_4)"/>
+</svg>

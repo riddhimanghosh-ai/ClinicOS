@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="skm16_0" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
+  <filter id="fxm16_0"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <filter id="pbm16_0"><feGaussianBlur stdDeviation="10"/></filter>
+  <radialGradient id="hlm16_0" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#skm16_0)" filter="url(#fxm16_0)"/>
+<g filter="url(#pbm16_0)"><ellipse cx="135" cy="124" rx="53" ry="59" fill="#5A3008" opacity="0.350" transform="rotate(2,135,124)"/><ellipse cx="250" cy="181" rx="75" ry="42" fill="#5A3008" opacity="0.350" transform="rotate(-10,250,181)"/><ellipse cx="87" cy="154" rx="92" ry="32" fill="#5A3008" opacity="0.350" transform="rotate(8,87,154)"/><ellipse cx="176" cy="273" rx="51" ry="32" fill="#5A3008" opacity="0.350" transform="rotate(14,176,273)"/><ellipse cx="213" cy="259" rx="44" ry="68" fill="#5A3008" opacity="0.350" transform="rotate(-5,213,259)"/></g>
+<rect width="400" height="400" fill="url(#hlm16_0)"/>
+</svg>

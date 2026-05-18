@@ -1,0 +1,37 @@
+{
+  "name": "kaya-os",
+  "version": "0.3.0",
+  "private": true,
+  "description": "KayaOS v3 — AI clinic operating system for Kaya Skin Clinic (Next.js prototype).",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "prebuild": "npm run seed",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "seed": "tsx scripts/seed.ts",
+    "reset": "rm -rf data/kaya.db public/photos && npm run seed",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.452.0",
+    "next": "14.2.15",
+    "openai": "^4.67.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^20.16.11",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3"
+  }
+}

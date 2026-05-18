@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="ska8_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
+  <filter id="fxa8_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <radialGradient id="hla8_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sha8_1" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#ska8_1)" filter="url(#fxa8_1)"/>
+<rect width="400" height="400" fill="#CC3030" opacity="0.144"/>
+<circle cx="51.7" cy="139.8" r="6.0" fill="#6B3030" opacity="0.59" />
+<circle cx="258.1" cy="302.7" r="12.1" fill="#6B3030" opacity="0.76" />
+<circle cx="219.2" cy="196.9" r="8.2" fill="#6B3030" opacity="0.56" />
+<circle cx="88.0" cy="78.5" r="9.0" fill="#8B2020" opacity="0.86" />
+<circle cx="58.3" cy="121.7" r="7.5" fill="#8B2020" opacity="0.64" />
+<circle cx="240.6" cy="138.2" r="12.3" fill="#8B2020" opacity="0.76" />
+<circle cx="125.4" cy="31.9" r="8.4" fill="#6B3030" opacity="0.72" />
+<circle cx="316.2" cy="295.2" r="12.0" fill="#6B3030" opacity="0.82" />
+<circle cx="82.8" cy="34.0" r="5.2" fill="#6B3030" opacity="0.69" />
+<circle cx="181.3" cy="238.0" r="11.5" fill="#6B3030" opacity="0.58" />
+<circle cx="359.1" cy="133.1" r="10.5" fill="#8B2020" opacity="0.67" />
+<circle cx="325.5" cy="299.3" r="4.5" fill="#6B3030" opacity="0.83" />
+<circle cx="85.2" cy="133.0" r="2.7" fill="#8B2020" opacity="0.66" />
+<rect width="400" height="400" fill="url(#hla8_1)"/>
+<rect width="400" height="400" fill="url(#sha8_1)"/>
+</svg>

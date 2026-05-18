@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="ska7_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
+  <filter id="fxa7_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.12" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <radialGradient id="hla7_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.18"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+  <radialGradient id="sha7_1" cx="72%" cy="78%" r="50%"><stop offset="0%" stop-color="#000" stop-opacity="0.2"/><stop offset="100%" stop-color="#000" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#ska7_1)" filter="url(#fxa7_1)"/>
+<rect width="400" height="400" fill="#CC3030" opacity="0.144"/>
+<circle cx="49.0" cy="297.0" r="10.3" fill="#6B3030" opacity="0.68" />
+<circle cx="272.0" cy="287.5" r="2.6" fill="#6B3030" opacity="0.87" />
+<circle cx="48.5" cy="55.4" r="8.6" fill="#8B2020" opacity="0.74" />
+<circle cx="189.9" cy="367.7" r="12.4" fill="#6B3030" opacity="0.57" />
+<circle cx="233.1" cy="198.9" r="7.8" fill="#8B2020" opacity="0.58" />
+<circle cx="264.8" cy="150.2" r="2.2" fill="#8B2020" opacity="0.69" />
+<circle cx="356.3" cy="304.5" r="3.4" fill="#8B2020" opacity="0.70" />
+<circle cx="236.6" cy="78.1" r="7.5" fill="#6B3030" opacity="0.70" />
+<circle cx="69.6" cy="186.9" r="8.9" fill="#8B2020" opacity="0.86" />
+<circle cx="288.1" cy="362.2" r="3.7" fill="#6B3030" opacity="0.78" />
+<circle cx="190.9" cy="224.3" r="13.0" fill="#6B3030" opacity="0.58" />
+<circle cx="153.0" cy="123.4" r="8.3" fill="#6B3030" opacity="0.64" />
+<rect width="400" height="400" fill="url(#hla7_1)"/>
+<rect width="400" height="400" fill="url(#sha7_1)"/>
+</svg>

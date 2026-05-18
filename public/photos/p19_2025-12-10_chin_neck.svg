@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="skm19_1" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#E8C49A"/><stop offset="55%" stop-color="#D4A874"/><stop offset="100%" stop-color="#B88C55"/></radialGradient>
+  <filter id="fxm19_1"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <filter id="pbm19_1"><feGaussianBlur stdDeviation="10"/></filter>
+  <radialGradient id="hlm19_1" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#skm19_1)" filter="url(#fxm19_1)"/>
+<g filter="url(#pbm19_1)"><ellipse cx="148" cy="188" rx="74" ry="60" fill="#5A3008" opacity="0.219" transform="rotate(11,148,188)"/><ellipse cx="176" cy="201" rx="44" ry="57" fill="#5A3008" opacity="0.219" transform="rotate(13,176,201)"/><ellipse cx="158" cy="121" rx="44" ry="38" fill="#5A3008" opacity="0.219" transform="rotate(14,158,121)"/></g>
+<rect width="400" height="400" fill="url(#hlm19_1)"/>
+</svg>

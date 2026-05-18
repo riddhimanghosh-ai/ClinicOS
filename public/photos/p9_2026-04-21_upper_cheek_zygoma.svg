@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+<defs>
+  <radialGradient id="skm9_3" cx="40%" cy="35%" r="65%"><stop offset="0%" stop-color="#D4A574"/><stop offset="55%" stop-color="#C08A5C"/><stop offset="100%" stop-color="#A57040"/></radialGradient>
+  <filter id="fxm9_3"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" result="n"/><feColorMatrix type="saturate" values="0.1" in="n" result="g"/><feBlend in="SourceGraphic" in2="g" mode="overlay"/></filter>
+  <filter id="pbm9_3"><feGaussianBlur stdDeviation="10"/></filter>
+  <radialGradient id="hlm9_3" cx="30%" cy="25%" r="45%"><stop offset="0%" stop-color="#FFF" stop-opacity="0.15"/><stop offset="100%" stop-color="#FFF" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="400" height="400" fill="url(#skm9_3)" filter="url(#fxm9_3)"/>
+<g filter="url(#pbm9_3)"><ellipse cx="108" cy="259" rx="90" ry="19" fill="#5A3008" opacity="0.087" transform="rotate(15,108,259)"/><ellipse cx="107" cy="129" rx="81" ry="62" fill="#5A3008" opacity="0.087" transform="rotate(-6,107,129)"/></g>
+<rect width="400" height="400" fill="url(#hlm9_3)"/>
+</svg>

@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.DS_Store
+.env
+.env.local
+*.log
+.turbo
+# SQLite WAL shim files (not the DB itself — committed for Vercel cold-start)
+data/*.db-shm
+data/*.db-wal
