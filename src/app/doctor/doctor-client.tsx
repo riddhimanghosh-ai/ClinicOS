@@ -43,6 +43,14 @@ export function DoctorClient({
     }
   };
 
+  const refreshPortfolio = async (id: number) => {
+    try {
+      const res = await fetch(`/api/patients/${id}/portfolio`, { cache: "no-store" });
+      const data = await res.json();
+      setPortfolio(data.portfolio);
+    } catch {}
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <aside className="space-y-4">
@@ -101,7 +109,7 @@ export function DoctorClient({
             </CardContent>
           </Card>
         ) : (
-          <PortfolioView portfolio={portfolio} onTagSaved={() => loadPortfolio(portfolio.patient.id)} />
+          <PortfolioView portfolio={portfolio} onTagSaved={() => refreshPortfolio(portfolio.patient.id)} />
         )}
       </section>
     </div>
@@ -118,6 +126,14 @@ function PortfolioView({
   onTagSaved: () => void;
 }) {
   const p = portfolio.patient;
+  const [activeTab, setActiveTab] = useState("history");
+  const [summaryKey, setSummaryKey] = useState(0);
+
+  const handleNoteSaved = () => {
+    onTagSaved();
+    setSummaryKey(k => k + 1); // force SummaryPane to re-fetch
+    setActiveTab("summary");   // auto-switch to Summary tab
+  };
 
   return (
     <div className="space-y-6">
@@ -155,7 +171,7 @@ function PortfolioView({
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="history">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
@@ -175,13 +191,13 @@ function PortfolioView({
           <TagsPane portfolio={portfolio} />
         </TabsContent>
         <TabsContent value="consult">
-          <ConsultPane patientId={p.id} onSaved={onTagSaved} />
+          <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
         </TabsContent>
         <TabsContent value="rx">
           <PrescriptionsPane portfolio={portfolio} onSaved={onTagSaved} />
         </TabsContent>
         <TabsContent value="summary">
-          <SummaryPane patientId={portfolio.patient.id} />
+          <SummaryPane key={summaryKey} patientId={portfolio.patient.id} />
         </TabsContent>
       </Tabs>
     </div>
@@ -521,26 +537,38 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mr = new MediaRecorder(stream);
+      // Pick a supported mime type
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "";
+      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
       mr.onstop = async () => {
         stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        if (audioChunksRef.current.length === 0) {
+          alert("No audio was captured. Please allow microphone access and try again.");
+          setTranscribing(false);
+          return;
+        }
+        const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || "audio/webm" });
         setTranscribing(true);
         try {
           const fd = new FormData();
           fd.append("audio", blob, "recording.webm");
           const res = await fetch("/api/transcribe", { method: "POST", body: fd });
           const data = await res.json();
+          if (data.error) throw new Error(data.error);
           if (data.transcript) setNote(n => n + (n ? " " : "") + data.transcript);
-        } catch {
-          alert("Transcription failed. Please type your note manually.");
+        } catch (err: any) {
+          alert("Transcription failed: " + (err?.message ?? "unknown error"));
         } finally {
           setTranscribing(false);
         }
       };
       mediaRecorderRef.current = mr;
-      mr.start();
+      mr.start(500); // collect chunks every 500ms
       setRecording(true);
     } catch {
       alert("Could not access microphone. Please check permissions.");
@@ -607,11 +635,28 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
           )}
         </div>
 
+        {/* Recording / transcribing status bar */}
+        {(recording || transcribing) && (
+          <div className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${recording ? "bg-destructive/10 text-destructive border border-destructive/30" : "bg-accent/10 text-accent border border-accent/30"}`}>
+            {recording ? (
+              <>
+                <span className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+                Recording… speak clearly, then click the mic button to stop &amp; transcribe.
+              </>
+            ) : (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Transcribing with Groq Whisper…
+              </>
+            )}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="Type or paste a voice-note transcript, or use the microphone..."
+            placeholder="Type or paste a note — or hit the mic button to record your voice"
             rows={3}
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send();
@@ -622,19 +667,20 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
               onClick={toggleRecording}
               variant={recording ? "destructive" : "outline"}
               size="sm"
-              title={recording ? "Stop recording" : transcribing ? "Transcribing…" : "Record voice note (Groq Whisper)"}
+              title={recording ? "Stop & transcribe" : transcribing ? "Transcribing…" : "Record voice (Groq Whisper)"}
               disabled={transcribing}
+              className={recording ? "animate-pulse" : ""}
             >
               {transcribing ? <Loader2 className="h-4 w-4 animate-spin" /> : recording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             </Button>
-            <Button onClick={send} disabled={pending || !note.trim() || transcribing}>
+            <Button onClick={send} disabled={pending || !note.trim() || transcribing || recording}>
               {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               Extract
             </Button>
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <div className="text-[11px] text-muted-foreground">Tip: ⌘/Ctrl + Enter to submit.</div>
+          <div className="text-[11px] text-muted-foreground">Mic → speak → mic again → auto-transcribed. Or type and hit ⌘Enter.</div>
           <button
             onClick={generateSampleNote}
             disabled={generating}
@@ -992,7 +1038,8 @@ function AddPrescriptionForm({ patientId, onSaved }: { patientId: number; onSave
     : items.some(it => it.name.trim());
 
   // Shared item editor grid (Type mode + Voice review phase)
-  const ItemEditor = () => (
+  // NOTE: rendered as JSX variable, NOT a component, to preserve input focus across re-renders
+  const itemEditorJSX = (
     <div className="space-y-2">
       <div className="grid grid-cols-[1fr_1fr_72px_28px] gap-2 px-1">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Item / Medicine</span>
@@ -1114,12 +1161,12 @@ function AddPrescriptionForm({ patientId, onSaved }: { patientId: number; onSave
               <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">Original transcript</summary>
               <div className="px-3 py-2 text-xs text-foreground/80 bg-secondary/20">{voiceText}</div>
             </details>
-            <ItemEditor />
+            {itemEditorJSX}
           </div>
         )}
 
         {/* ── TYPE MODE ── */}
-        {mode === "type" && <ItemEditor />}
+        {mode === "type" && {itemEditorJSX}}
 
         {/* ── SCAN MODE ── */}
         {mode === "scan" && (

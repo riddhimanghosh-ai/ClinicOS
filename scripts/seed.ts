@@ -69,7 +69,7 @@ const PRODUCTS = [
 ];
 
 const NAMES: Array<[string, string]> = [
-  ["Aanya Sharma", "F"], ["Aarav Patel", "M"], ["Aishwarya Iyer", "F"],
+  ["Astha Mundhra", "F"], ["Aarav Patel", "M"], ["Gladston Sequeira", "M"],
   ["Anjali Reddy", "F"], ["Arjun Kapoor", "M"], ["Aditi Gupta", "F"],
   ["Akash Singh", "M"], ["Avani Joshi", "F"], ["Bhavya Mehta", "F"],
   ["Diya Nair", "F"], ["Esha Bhatt", "F"], ["Gauri Desai", "F"],
