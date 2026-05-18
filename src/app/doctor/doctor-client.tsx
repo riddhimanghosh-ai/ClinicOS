@@ -146,7 +146,11 @@ function PortfolioView({
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl font-semibold">{p.name}</h2>
-                <Badge variant="outline">{p.premium_tier?.toUpperCase()}</Badge>
+                {portfolio.sessions.length > 0 && (
+                  <Badge variant="outline">
+                    {portfolio.sessions[0].service_name_snapshot || "Session"}
+                  </Badge>
+                )}
                 {p.home_branch_name && <Badge variant="accent">{p.home_branch_name}</Badge>}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
