@@ -1161,12 +1161,12 @@ function AddPrescriptionForm({ patientId, onSaved }: { patientId: number; onSave
               <summary className="cursor-pointer px-3 py-2 text-xs text-muted-foreground select-none">Original transcript</summary>
               <div className="px-3 py-2 text-xs text-foreground/80 bg-secondary/20">{voiceText}</div>
             </details>
-            {itemEditorJSX}
+            itemEditorJSX
           </div>
         )}
 
         {/* ── TYPE MODE ── */}
-        {mode === "type" && {itemEditorJSX}}
+        {mode === "type" && itemEditorJSX}
 
         {/* ── SCAN MODE ── */}
         {mode === "scan" && (
