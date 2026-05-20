@@ -418,12 +418,14 @@ function DetailDrawer({
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium">{appt.appointment_ts.slice(11, 16)}</span>
                   <span className="text-xs text-muted-foreground">· {dur} min</span>
-                  <button
+                  <Button
+                    size="xs"
+                    variant="ghost"
                     onClick={() => setModifyMode(true)}
-                    className="text-[10px] text-primary underline hover:no-underline ml-1"
+                    className="ml-1 h-6 px-2 text-xs"
                   >
-                    Modify
-                  </button>
+                    ✏️ Modify
+                  </Button>
                 </div>
               )}
             </div>
