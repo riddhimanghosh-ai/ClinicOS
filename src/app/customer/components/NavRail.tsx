@@ -22,6 +22,7 @@ const IconChat = (p: any) => <Icon {...p}><path d="M4 5.5 H20 V16 H13 L9 19.5 V1
 const IconRewards = (p: any) => <Icon {...p}><circle cx="12" cy="10" r="6" /><path d="M8.5 14.5 L7 21 L12 18.5 L17 21 L15.5 14.5" /><G cx={12} cy={10} r={2} /></Icon>;
 const IconRefer = (p: any) => <Icon {...p}><circle cx="8" cy="9" r="3" /><path d="M2.5 19 C2.5 15.5 5 13.5 8 13.5 C11 13.5 13.5 15.5 13.5 19" /><circle cx="17" cy="11" r="2.4" /><path d="M14 19 C14 16.5 15.5 15 17 15 C18.5 15 20.5 16.5 20.5 19" /><G cx={17} cy={11} /></Icon>;
 const IconPackage = (p: any) => <Icon {...p}><path d="M3.5 7 L12 4 L20.5 7 V17 L12 20 L3.5 17 Z" /><path d="M3.5 7 L12 10 L20.5 7" /><path d="M12 10 V20" /><G cx={12} cy={10} /></Icon>;
+const IconRx = (p: any) => <Icon {...p}><path d="M9 2 H15 L17 4 V7 H7 V4 Z" /><rect x="5" y="7" width="14" height="15" rx="1" /><path d="M9 11 H15 M9 14 H13" /></Icon>;
 const IconBlog = (p: any) => <Icon {...p}><path d="M5 4 H17 L19.5 6.5 V20 H5 Z" /><path d="M8 9 H16 M8 12 H16 M8 15 H13" /><G cx={17.5} cy={6.5} /></Icon>;
 const IconVideo = (p: any) => <Icon {...p}><rect x="3" y="5.5" width="18" height="13" rx="1.5" /><path d="M10.5 9.5 L14.5 12 L10.5 14.5 Z" fill="currentColor" stroke="none" /><G cx={20} cy={8} r={1.2} /></Icon>;
 const IconChevron = (p: any) => <Icon {...p}><path d="M6 9 L12 15 L18 9" /></Icon>;
@@ -45,7 +46,7 @@ const Section = ({ label, open, onToggle, children }: any) => (
 
 export default function NavRail({ active = 'dashboard' }: { active?: string }) {
   const router = useRouter();
-  const careActive = ['dashboard', 'appointments', 'prescriptions', 'before-after', 'chatbot', 'summary'].includes(active);
+  const careActive = ['dashboard', 'appointments', 'medications', 'prescriptions', 'before-after', 'chatbot', 'summary'].includes(active);
   const memberActive = ['loyalty', 'referral', 'products'].includes(active);
   const learnActive = ['blogs', 'videos'].includes(active);
   return (
@@ -60,7 +61,8 @@ export default function NavRail({ active = 'dashboard' }: { active?: string }) {
       <Section label="Care" open={true} onToggle={() => {}}>
         <NavItem icon={IconHome} label="Overview" active={active === 'dashboard'} onClick={() => router.push('/customer/dashboard')} />
         <NavItem icon={IconAppt} label="Appointments" badge="2" active={active === 'appointments'} onClick={() => router.push('/customer/sessions')} />
-        <NavItem icon={IconMed} label="Medications" badge="4" active={active === 'prescriptions'} onClick={() => router.push('/customer/prescriptions')} />
+        <NavItem icon={IconMed} label="Medications" badge="4" active={active === 'medications'} onClick={() => router.push('/customer/prescriptions?tab=medications')} />
+        <NavItem icon={IconRx} label="Prescriptions" active={active === 'prescriptions'} onClick={() => router.push('/customer/prescriptions?tab=prescriptions')} />
         <NavItem icon={IconProgress} label="Progress" active={active === 'before-after'} onClick={() => router.push('/customer/before-after')} />
         <NavItem icon={IconSummary} label="Summaries" active={active === 'summary'} onClick={() => router.push('/customer/summary')} />
         <NavItem icon={IconChat} label="Dr. AI" active={active === 'chatbot'} onClick={() => router.push('/customer/chatbot')} />
