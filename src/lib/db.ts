@@ -651,7 +651,14 @@ export function resetSchema(): void {
       try { fs.unlinkSync(path.join(PHOTOS_DIR, f)); } catch {}
     }
   }
-  initSchema();
+  // Open a fresh DB directly — bypasses the Vercel/Amplify copy-from-source logic
+  // in db() so resetSchema always produces a truly clean slate regardless of platform.
+  fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+  const fresh = new Database(DB_PATH);
+  fresh.pragma("journal_mode = WAL");
+  fresh.pragma("foreign_keys = ON");
+  _db = fresh;
+  initSchema(fresh);
 }
 
 // ----- High-level helpers ---------------------------------------------------
