@@ -1115,7 +1115,7 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
             ) : (
               <>
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Transcribing with Groq Whisper…
+                Transcribing…
               </>
             )}
           </div>
@@ -1136,7 +1136,7 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
               onClick={toggleRecording}
               variant={recording ? "destructive" : "outline"}
               size="sm"
-              title={recording ? "Stop & transcribe" : transcribing ? "Transcribing…" : "Record voice (Groq Whisper)"}
+              title={recording ? "Stop & transcribe" : transcribing ? "Transcribing…" : "Record voice"}
               disabled={transcribing}
               className={recording ? "animate-pulse" : ""}
             >

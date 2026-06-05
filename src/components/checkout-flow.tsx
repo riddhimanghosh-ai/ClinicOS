@@ -369,7 +369,7 @@ export function CheckoutFlow({
       <div className="rounded-xl border-2 border-violet-200 bg-violet-50 px-6 py-5 text-center space-y-2">
         <div className="text-[11px] font-semibold uppercase tracking-widest text-violet-600 mb-3"><KeyRound className="h-4 w-4 inline mr-1.5" />Patient OTP</div>
         <div className="text-5xl font-bold tracking-[0.2em] font-mono text-violet-900">{otp.slice(0, 3)}-{otp.slice(3)}</div>
-        <div className="text-xs text-violet-700 mt-2">Read this code to the patient and ask them to confirm it</div>
+        <div className="text-xs text-violet-700 mt-2">Share this code with the patient for confirmation</div>
       </div>
       {!otpConfirmed ? (
         <button onClick={() => setOtpConfirmed(true)} className="w-full flex items-center justify-center gap-2 rounded-lg border-2 border-violet-400 bg-white hover:bg-violet-50 text-violet-800 px-4 py-2.5 text-sm font-semibold transition-colors">

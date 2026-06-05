@@ -756,7 +756,7 @@ async function routeQuery(
     return `Here's what I found:\n\n${parts.join("\n")}`;
   }
 
-  // Everything else → Groq AI with full clinical context
+  // Everything else → AI with full clinical context
   try {
     const res = await fetch(`/api/patients/${patientId}/chat`, {
       method: "POST",
