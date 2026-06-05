@@ -101,7 +101,7 @@ export default function SuperAdminHome() {
   const totalSessionsPending = branchStats.reduce((s, b) => s + b.sessions_pending, 0);
 
   // Clinic issues
-  const clinicsWithIssues = clinicStatuses.filter(cs => !cs.is_open || cs.doctor_on_leave || cs.appliances.some(a => !a.working));
+  const clinicsWithIssues = clinicStatuses.filter(cs => !cs.is_open || !!cs.doctor_on_leave || cs.appliances.some(a => !a.working));
 
   // Revenue trend — most recent month first
   const latestMonth = monthlyRevenue[0];
@@ -193,16 +193,18 @@ export default function SuperAdminHome() {
             <CardContent className="space-y-2">
               {clinicStatuses.map(cs => {
                 const down = cs.appliances.filter(a => !a.working);
-                const issue = !cs.is_open || cs.doctor_on_leave || down.length > 0;
+                const onLeave = !!cs.doctor_on_leave;
+                const isOpen = !!cs.is_open;
+                const issue = !isOpen || onLeave || down.length > 0;
                 return (
                   <div key={cs.branch_id} className={[
                     "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm",
                     issue ? "bg-red-50 border border-red-100" : "bg-emerald-50 border border-emerald-100",
                   ].join(" ")}>
-                    <span className={`h-2 w-2 rounded-full shrink-0 ${cs.is_open ? (issue ? "bg-amber-500" : "bg-emerald-500") : "bg-red-500"}`} />
+                    <span className={`h-2 w-2 rounded-full shrink-0 ${isOpen ? (issue ? "bg-amber-500" : "bg-emerald-500") : "bg-red-500"}`} />
                     <span className="font-medium flex-1 truncate">{cs.branch_name}</span>
-                    {!cs.is_open && <span className="text-[10px] text-red-600 font-medium">Closed</span>}
-                    {cs.doctor_on_leave && <span className="text-[10px] text-amber-600 font-medium">Dr on leave</span>}
+                    {!isOpen && <span className="text-[10px] text-red-600 font-medium">Closed</span>}
+                    {onLeave && <span className="text-[10px] text-amber-600 font-medium">Dr on leave</span>}
                     {down.length > 0 && <span className="text-[10px] text-red-600 font-medium">{down.length} device{down.length !== 1 ? "s" : ""} down</span>}
                     {!issue && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
                   </div>

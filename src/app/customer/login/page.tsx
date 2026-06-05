@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
@@ -10,6 +10,13 @@ export default function LoginPage() {
   const [phase, setPhase] = useState<'phone' | 'otp' | 'done'>('phone');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // If already signed in, skip straight to dashboard
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('user')) {
+      router.replace('/customer/dashboard');
+    }
+  }, []);
 
   const phoneDigits = phone.replace(/\D/g, '');
   const phoneValid = phoneDigits.length === 10;

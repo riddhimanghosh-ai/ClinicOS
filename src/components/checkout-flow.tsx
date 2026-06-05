@@ -84,10 +84,14 @@ export function CheckoutFlow({
       const latest = data.portfolio?.prescriptions?.[0];
       let raw: any[] = latest?.items ?? [];
 
-      // Filter out in-clinic procedures — only keep take-home products
-      const productItems = raw.filter(it => !isClinicProcedure(it));
+      // Only keep take-home products; if none found fall back to the appointment service
+      let productItems = raw.filter(it => !isClinicProcedure(it));
+      if (productItems.length === 0) {
+        // Fallback: charge for the appointment service itself
+        productItems = [{ product: serviceType, product_detail: "Appointment service fee", cost: null }];
+      }
 
-      // Build line items with catalog price lookup
+      // Fetch catalog prices for each item
       const priceResults = await Promise.all(
         productItems.map(it =>
           fetch(`/api/catalog/price?name=${encodeURIComponent(it.product ?? it.name ?? "")}`)
@@ -100,6 +104,7 @@ export function CheckoutFlow({
       const items: LineItem[] = productItems.map((it, i) => {
         const catalogPrice = priceResults[i];
         const existingCost = it.cost != null ? Number(it.cost) : null;
+        // Priority: existing saved cost → catalog price → 0 (manager must enter)
         const basePrice = existingCost ?? catalogPrice ?? 0;
         return {
           id: i,
@@ -115,8 +120,9 @@ export function CheckoutFlow({
       setSelected(items.map(() => true));
     } catch (e) {
       console.error(e);
-      setLineItems([]);
-      setSelected([]);
+      // Even on error, show the service type as a fallback item
+      setLineItems([{ id: 0, product: serviceType, product_detail: "Appointment service fee", basePrice: 0, discountPct: 0, priceOverride: false }]);
+      setSelected([true]);
     }
     setRxLoading(false);
   };
@@ -169,22 +175,6 @@ export function CheckoutFlow({
     if (rxLoading) return (
       <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
         <Loader2 className="h-4 w-4 animate-spin" /> Loading prescription &amp; prices…
-      </div>
-    );
-
-    if (lineItems.length === 0) return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">Products only</span>
-          <button onClick={() => setPhase("choose")} className="text-xs text-muted-foreground underline hover:text-foreground">← Back</button>
-        </div>
-        <div className="rounded-xl border border-border bg-secondary/30 px-5 py-6 text-center space-y-2">
-          <div className="text-sm text-muted-foreground">No take-home products found in the prescription.</div>
-          <div className="text-xs text-muted-foreground">In-clinic procedures are handled under <strong>Treatment</strong>.</div>
-        </div>
-        <button onClick={() => setPhase("choose")} className="w-full text-xs text-muted-foreground border border-border rounded-lg py-2 hover:bg-secondary transition-colors">
-          ← Back to checkout options
-        </button>
       </div>
     );
 
@@ -274,14 +264,14 @@ export function CheckoutFlow({
           </div>
           <button
             onClick={() => collectAndReceipt("products")}
-            disabled={selectedItems.length === 0 || selectedItems.some(it => it.basePrice === 0)}
+            disabled={selectedItems.length === 0}
             className="flex items-center gap-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-2 text-sm font-semibold transition-colors"
           >
             <Receipt className="h-4 w-4" />Collect {inr(total)} →
           </button>
         </div>
         {selectedItems.some(it => it.basePrice === 0) && (
-          <p className="text-xs text-amber-600 text-right">Enter a price for all items before collecting.</p>
+          <p className="text-xs text-amber-600 text-right">⚠ Some items have ₹0 price — update before collecting.</p>
         )}
       </div>
     );
