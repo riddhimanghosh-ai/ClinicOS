@@ -1053,12 +1053,10 @@ function InClinicSection({ arrivedToday }: { arrivedToday: ArrivedPatient[] }) {
             const statusDot: Record<string, string> = {
               arrived: "bg-amber-500",
               in_session: "bg-violet-500",
-              converted: "bg-emerald-500",
             };
             const statusLabel: Record<string, string> = {
               arrived: "Arrived",
               in_session: "In Session",
-              converted: "Done",
             };
             return (
               <div key={p.appointment_id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -1079,24 +1077,18 @@ function InClinicSection({ arrivedToday }: { arrivedToday: ArrivedPatient[] }) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {p.appt_status === "converted" ? (
-                      <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Done
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setCheckoutId(isOpen ? null : p.appointment_id)}
-                        className={[
-                          "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
-                          isOpen
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "border-border bg-card hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700",
-                        ].join(" ")}
-                      >
-                        <ShoppingBag className="h-3.5 w-3.5" />
-                        {isOpen ? "Close" : "Checkout →"}
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setCheckoutId(isOpen ? null : p.appointment_id)}
+                      className={[
+                        "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
+                        isOpen
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border bg-card hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700",
+                      ].join(" ")}
+                    >
+                      <ShoppingBag className="h-3.5 w-3.5" />
+                      {isOpen ? "Close" : "Checkout →"}
+                    </button>
                   </div>
                 </div>
 

@@ -1595,7 +1595,7 @@ export function listArrivedToday(): ArrivedPatient[] {
     JOIN branches b   ON b.id  = a.branch_id
     LEFT JOIN doctors doc ON doc.id = a.doctor_id
     WHERE date(a.appointment_ts) = ?
-      AND a.status IN ('arrived','in_session','converted')
+      AND a.status IN ('arrived','in_session')
     ORDER BY a.appointment_ts ASC
   `).all(today) as ArrivedPatient[];
 }
