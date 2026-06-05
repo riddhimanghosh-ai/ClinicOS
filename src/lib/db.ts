@@ -533,6 +533,37 @@ export function initSchema(handle?: Database.Database): void {
     }
   } catch (_) {}
 
+  // Seed follow-up cohort sessions (treatment 2–10 days ago) so the Follow Up queue is non-empty
+  try {
+    const hasFollowUp = (d.prepare(`
+      SELECT COUNT(*) AS cnt FROM sessions_consumed
+      WHERE session_type = 'treatment'
+        AND session_date >= date('now', '-10 days')
+        AND session_date <= date('now', '-2 days')
+    `).get() as any).cnt;
+    if (hasFollowUp === 0) {
+      const dateAgo = (n: number) => { const t = new Date(); t.setDate(t.getDate() - n); return t.toISOString().slice(0, 10); };
+      const fuPatients = d.prepare(`
+        SELECT pp.id AS pkg_id, pp.patient_id, p.home_branch_id,
+               sc.name AS svc,
+               (SELECT id FROM doctors WHERE home_branch_id = p.home_branch_id LIMIT 1) AS doctor_id
+        FROM packages_purchased pp
+        JOIN patients p ON p.id = pp.patient_id
+        JOIN services_catalog sc ON sc.id = pp.service_id
+        LIMIT 5
+      `).all() as any[];
+      const insFollowUp = d.prepare(`
+        INSERT OR IGNORE INTO sessions_consumed
+          (package_id, patient_id, branch_id, doctor_id, session_date, service_name_snapshot, session_type)
+        VALUES (?, ?, ?, ?, ?, ?, 'treatment')
+      `);
+      [3, 5, 7, 4, 6].forEach((daysAgo, i) => {
+        const p = fuPatients[i];
+        if (p) insFollowUp.run(p.pkg_id, p.patient_id, p.home_branch_id, p.doctor_id, dateAgo(daysAgo), p.svc);
+      });
+    }
+  } catch (_) {}
+
   // Additive migration: is_seed flag on consultations
   try { d.exec("ALTER TABLE consultations ADD COLUMN is_seed INTEGER DEFAULT 0"); } catch {}
 
