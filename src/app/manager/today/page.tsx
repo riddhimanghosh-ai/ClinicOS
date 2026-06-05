@@ -1,4 +1,4 @@
-import { getTodayConfirmationQueue, getPendingSessionPatients, getAppointments } from "@/lib/db";
+import { getTodayConfirmationQueue, getPendingSessionPatients, getAppointments, listArrivedToday, ArrivedPatient } from "@/lib/db";
 import { recipeFollowUp, recipeMissedSession, recipeGapCloser, recipeAlpha, recipeBeta } from "@/lib/cohorts";
 import { PageHeader } from "@/components/page-header";
 import { TodayClient } from "./today-client";
@@ -10,6 +10,7 @@ const PIPELINE_STATUSES = ["booked", "confirmed", "arrived", "in_session", "conv
 export default function TodayPage() {
   const today = new Date().toISOString().slice(0, 10);
   const allAppts = getAppointments(today);
+  const arrivedToday = listArrivedToday();
   const confirmQueue = getTodayConfirmationQueue(today);
   const pendingPatients = getPendingSessionPatients();
   const followUp = recipeFollowUp();
@@ -40,6 +41,7 @@ export default function TodayPage() {
         gapCloser={gapCloser}
         alpha={alpha}
         beta={beta}
+        arrivedToday={arrivedToday}
       />
     </div>
   );

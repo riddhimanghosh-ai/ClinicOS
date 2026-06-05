@@ -50,6 +50,17 @@ const APPT_STATUS_LABEL: Record<string, string> = {
   rescheduled: "Rescheduled",
 };
 
+function svcBadgeCls(st: string) {
+  const s = st.toLowerCase();
+  if (s.includes("laser") || s.includes("q-switch") || s.includes("carbon")) return "bg-violet-100 text-violet-800 border-violet-200";
+  if (s.includes("peel")) return "bg-amber-100 text-amber-800 border-amber-200";
+  if (s.includes("microneedling")) return "bg-blue-100 text-blue-800 border-blue-200";
+  if (s.includes("acne")) return "bg-orange-100 text-orange-800 border-orange-200";
+  if (s.includes("hair") || s.includes("prp") || s.includes("gfc")) return "bg-rose-100 text-rose-800 border-rose-200";
+  if (s.includes("consultation")) return "bg-slate-100 text-slate-600 border-slate-200";
+  return "bg-secondary text-muted-foreground border-border";
+}
+
 export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");
 
@@ -161,6 +172,9 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`h-2 w-2 rounded-full shrink-0 ${APPT_STATUS_DOT[row.appt_status] ?? "bg-gray-400"}`} />
                         <span className="font-semibold text-sm">{row.patient_name}</span>
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${svcBadgeCls(row.service_type)}`}>
+                          {row.service_type}
+                        </span>
                         <Badge variant="outline" className="text-[10px]">{APPT_STATUS_LABEL[row.appt_status] ?? row.appt_status}</Badge>
                         <a
                           href={`tel:${row.phone}`}
@@ -170,8 +184,6 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         </a>
                       </div>
                       <div className="text-xs text-muted-foreground flex flex-wrap gap-2">
-                        <span className="font-medium text-foreground">{row.service_type}</span>
-                        <span>·</span>
                         <span>{row.appointment_ts.slice(0, 16).replace("T", " ")}</span>
                         <span>·</span>
                         <span>{row.branch_name}</span>

@@ -1407,6 +1407,41 @@ export type TreatmentOpsRow = {
   fno_submitted_at: string | null;
 };
 
+export type ArrivedPatient = {
+  appointment_id: number;
+  patient_id: number;
+  patient_name: string;
+  phone: string;
+  service_type: string;
+  appointment_ts: string;
+  appt_status: string;
+  branch_name: string;
+  doctor_name: string | null;
+};
+
+export function listArrivedToday(): ArrivedPatient[] {
+  const today = new Date().toISOString().slice(0, 10);
+  return db().prepare(`
+    SELECT
+      a.id              AS appointment_id,
+      p.id              AS patient_id,
+      p.name            AS patient_name,
+      p.phone,
+      a.service_type,
+      a.appointment_ts,
+      a.status          AS appt_status,
+      b.name            AS branch_name,
+      doc.name          AS doctor_name
+    FROM appointments a
+    JOIN patients p   ON p.id  = a.patient_id
+    JOIN branches b   ON b.id  = a.branch_id
+    LEFT JOIN doctors doc ON doc.id = a.doctor_id
+    WHERE date(a.appointment_ts) = ?
+      AND a.status IN ('arrived','in_session','converted')
+    ORDER BY a.appointment_ts ASC
+  `).all(today) as ArrivedPatient[];
+}
+
 export function getTreatmentOps(lookbackDays = 30): TreatmentOpsRow[] {
   return db().prepare(`
     SELECT
