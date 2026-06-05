@@ -227,8 +227,10 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <Package className="h-3 w-3" />Inventory (FnO)
                         </div>
-                        {fStatus === "not_applicable" ? (
-                          <div className="text-xs text-muted-foreground">Session not yet done</div>
+                        {fStatus === "not_applicable" || tStatus === "not_started" ? (
+                          <div className="text-xs text-muted-foreground">
+                            {fStatus === "not_applicable" ? "Session not yet done" : "Awaiting treatment"}
+                          </div>
                         ) : fStatus === "complete" ? (
                           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
                             <CheckCircle2 className="h-4 w-4" />Submitted
@@ -259,7 +261,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                           )}
                         </div>
                       )}
-                      {(isPendingFno(row) && !isPendingTreatment(row)) && (
+                      {(isPendingFno(row) && tStatus === "complete") && (
                         <a
                           href={`/manager/fno/${row.appointment_id}`}
                           className="flex items-center gap-1.5 rounded-lg bg-amber-500 text-white px-3 py-2 text-xs font-semibold hover:bg-amber-600 transition-colors whitespace-nowrap"
