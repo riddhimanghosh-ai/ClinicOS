@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save, ShoppingBag } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save, ShoppingBag, Plus, Loader2, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -111,30 +111,30 @@ function hasClash(appt: AppointmentRow, all: AppointmentRow[]): boolean {
 
 // ── Lead type styles ──────────────────────────────────────────────────────────
 const LEAD_TYPE_STYLE: Record<string, { label: string; cls: string }> = {
-  website_form: { label: "Website Form",  cls: "bg-blue-100 text-blue-700 border-blue-200" },
-  chatbot:      { label: "AI Chatbot",    cls: "bg-violet-100 text-violet-700 border-violet-200" },
-  call:         { label: "Phone Call",    cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  referral:     { label: "Referral",      cls: "bg-amber-100 text-amber-700 border-amber-200" },
-  campaign:     { label: "Campaign",      cls: "bg-rose-100 text-rose-700 border-rose-200" },
+  website_form: { label: "Website Form",  cls: "bg-primary/10 text-primary border-primary/30" },
+  chatbot:      { label: "AI Chatbot",    cls: "bg-primary/10 text-primary border-violet-200" },
+  call:         { label: "Phone Call",    cls: "bg-success/10 text-success border-success/30" },
+  referral:     { label: "Referral",      cls: "bg-secondary text-muted-foreground border-border" },
+  campaign:     { label: "Campaign",      cls: "bg-destructive/10 text-destructive border-destructive/30" },
   walk_in:      { label: "Walk-in",       cls: "bg-gray-100 text-gray-700 border-gray-200" },
 };
 
 // ── Status styles ─────────────────────────────────────────────────────────────
 const STATUS_BG: Record<string, string> = {
-  booked:      "border-blue-300 bg-blue-50 text-blue-900",
-  confirmed:   "border-emerald-300 bg-emerald-50 text-emerald-900",
-  arrived:     "border-amber-300 bg-amber-50 text-amber-900",
-  in_session:  "border-violet-300 bg-violet-50 text-violet-900",
+  booked:      "border-blue-300 bg-primary/5 text-blue-900",
+  confirmed:   "border-success/40 bg-success/5 text-foreground",
+  arrived:     "border-border bg-secondary text-amber-900",
+  in_session:  "border-violet-300 bg-primary/5 text-violet-900",
   converted:   "border-green-300 bg-green-100/60 text-green-900 opacity-70",
   rescheduled: "border-orange-300 bg-orange-50 text-orange-900 opacity-80",
   no_show:     "border-border bg-secondary/40 text-muted-foreground opacity-40",
 };
 const STATUS_DOT: Record<string, string> = {
-  booked:      "bg-blue-400",
-  confirmed:   "bg-emerald-500",
-  arrived:     "bg-amber-500",
-  in_session:  "bg-violet-500",
-  converted:   "bg-green-600",
+  booked:      "bg-primary/60",
+  confirmed:   "bg-success/50",
+  arrived:     "bg-secondary0",
+  in_session:  "bg-primary/50",
+  converted:   "bg-success",
   rescheduled: "bg-orange-400",
   no_show:     "bg-gray-400",
 };
@@ -162,6 +162,7 @@ export function AppointmentsClient({
   const [appts, setAppts] = useState<AppointmentRow[]>(initialAppointments);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<AppointmentRow | null>(null);
+  const [showBookingModal, setShowBookingModal] = useState(false);
 
   useEffect(() => {
     if (initialOpenId) {
@@ -218,19 +219,30 @@ export function AppointmentsClient({
   };
 
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
 
   const FILTERS = [
-    { key: "all",         label: "All",             count: appts.length },
-    { key: "booked",      label: "Needs Confirmation", count: appts.filter(a => a.status === "booked").length },
-    { key: "confirmed",   label: "Confirmed",          count: appts.filter(a => a.status === "confirmed").length },
-    { key: "arrived",     label: "Arrived",            count: appts.filter(a => a.status === "arrived").length },
-    { key: "in_session",  label: "In Session",         count: appts.filter(a => a.status === "in_session").length },
-    { key: "converted",   label: "Completed ✓",         count: appts.filter(a => a.status === "converted").length },
-    { key: "rescheduled", label: "Rescheduled",        count: appts.filter(a => a.status === "rescheduled").length },
-    { key: "no_show",     label: "No Show",            count: appts.filter(a => a.status === "no_show").length },
+    { key: "all",              label: "All",                count: appts.length },
+    { key: "booked",           label: "Needs Confirmation", count: appts.filter(a => a.status === "booked").length },
+    { key: "confirmed",        label: "Confirmed",          count: appts.filter(a => a.status === "confirmed").length },
+    { key: "checkout_pending", label: "Checkout Pending",   count: appts.filter(a => a.status === "arrived").length, dot: STATUS_DOT["arrived"] },
+    { key: "in_session",       label: "In Session",         count: appts.filter(a => a.status === "in_session").length },
+    { key: "inventory_pending",label: "Inventory Pending",  count: appts.filter(a => a.status === "converted").length, dot: "bg-orange-400" },
+    { key: "rescheduled",      label: "Rescheduled",        count: appts.filter(a => a.status === "rescheduled").length },
+    { key: "no_show",          label: "No Show",            count: appts.filter(a => a.status === "no_show").length },
   ].filter(f => f.key === "all" || f.count > 0);
 
-  const visibleAppts = statusFilter === "all" ? appts : appts.filter(a => a.status === statusFilter);
+  const statusForFilter = (key: string) =>
+    key === "checkout_pending" ? "arrived" :
+    key === "inventory_pending" ? "converted" : key;
+
+  const searchLower = search.toLowerCase().trim();
+  const visibleAppts = appts
+    .filter(a => statusFilter === "all" || a.status === statusForFilter(statusFilter))
+    .filter(a => !searchLower || a.patient_name.toLowerCase().includes(searchLower) ||
+      a.service_type.toLowerCase().includes(searchLower) ||
+      (a.doctor_name ?? "").toLowerCase().includes(searchLower) ||
+      (a.phone ?? "").includes(search.trim()));
 
   return (
     <div className="space-y-4">
@@ -251,7 +263,44 @@ export function AppointmentsClient({
         <Button variant="secondary" size="sm" onClick={() => navigate(1)}>
           <ChevronRight className="h-4 w-4" />
         </Button>
+        <Button size="sm" onClick={() => setShowBookingModal(true)} className="gap-1.5 shrink-0">
+          <Plus className="h-4 w-4" /> Book Appointment
+        </Button>
       </div>
+
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+        <input
+          type="text"
+          placeholder="Search by patient name, service, doctor, or phone…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="w-full h-9 rounded-lg border border-border bg-card pl-9 pr-9 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {/* Booking modal */}
+      {showBookingModal && (
+        <BookingModal
+          defaultDate={date}
+          onClose={() => setShowBookingModal(false)}
+          onBooked={(newAppt) => {
+            if (newAppt.appointment_ts.slice(0, 10) === date) {
+              setAppts(prev => [...prev, newAppt]);
+            }
+            setShowBookingModal(false);
+          }}
+        />
+      )}
 
       {/* Status filter chips */}
       <div className="flex flex-wrap gap-1.5">
@@ -267,7 +316,7 @@ export function AppointmentsClient({
             ].join(" ")}
           >
             {f.key !== "all" && (
-              <span className={`h-1.5 w-1.5 rounded-full ${STATUS_DOT[f.key] ?? "bg-gray-400"}`} />
+              <span className={`h-1.5 w-1.5 rounded-full ${"dot" in f && f.dot ? f.dot : STATUS_DOT[f.key] ?? "bg-gray-400"}`} />
             )}
             {f.label}
             <span className={[
@@ -328,10 +377,10 @@ export function AppointmentsClient({
                       <div>
                         <div className="text-sm font-semibold text-foreground leading-tight">{room.label}</div>
                         {room.subtitle && (
-                          <div className="text-[10px] text-amber-600 font-medium mt-0.5">{room.subtitle}</div>
+                          <div className="text-[10px] text-muted-foreground font-medium mt-0.5">{room.subtitle}</div>
                         )}
                         {laneCount > 1 && (
-                          <div className="text-[10px] text-violet-600 font-medium mt-0.5">{laneCount} concurrent</div>
+                          <div className="text-[10px] text-primary font-medium mt-0.5">{laneCount} concurrent</div>
                         )}
                       </div>
                       <div className="mt-2">
@@ -399,7 +448,7 @@ export function AppointmentsClient({
                           <button
                             key={a.id}
                             onClick={() => setSelected(a)}
-                            className={`absolute rounded-lg border text-left shadow-sm hover:shadow-md transition-all cursor-pointer ${STATUS_BG[a.status] ?? "border-border bg-card"} ${clash ? "ring-2 ring-red-400 ring-offset-1" : ""}`}
+                            className={`absolute rounded-lg border text-left hover:shadow-md transition-all cursor-pointer ${STATUS_BG[a.status] ?? "border-border bg-card"} ${clash ? "ring-2 ring-red-400 ring-offset-1" : ""}`}
                             style={{ left, top, width, height: cardH, overflow: "hidden", zIndex: 1 }}
                           >
                             <div className="px-2.5 py-2 h-full flex flex-col justify-between gap-0.5">
@@ -407,7 +456,7 @@ export function AppointmentsClient({
                               <div className="flex items-center gap-1.5 min-w-0">
                                 <span className={`h-2 w-2 rounded-full shrink-0 ${STATUS_DOT[a.status] ?? "bg-gray-400"}`} />
                                 <span className="font-semibold text-[12px] leading-tight truncate flex-1">{a.patient_name}</span>
-                                {clash && <AlertTriangle className="h-3 w-3 text-red-500 shrink-0" />}
+                                {clash && <AlertTriangle className="h-3 w-3 text-destructive shrink-0" />}
                               </div>
                               {/* Row 2: service */}
                               <div className="text-[10px] text-muted-foreground truncate pl-3.5">{a.service_type}</div>
@@ -418,7 +467,7 @@ export function AppointmentsClient({
                                 )}
                                 <div className="flex items-center gap-1 ml-auto shrink-0">
                                   {a.status === "converted" && (
-                                    <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1 rounded font-medium">Done ✓</span>
+                                    <span className="text-[9px] bg-success/10 text-success px-1 rounded font-medium">Done ✓</span>
                                   )}
                                   <span className="text-[9px] text-muted-foreground/70">
                                     {a.appointment_ts.slice(11, 16)}
@@ -428,7 +477,7 @@ export function AppointmentsClient({
                               {/* Checkout indicator for arrived patients */}
                               {(a.status === "arrived" || a.status === "in_session") && (
                                 <div className="mt-0.5 pl-3.5">
-                                  <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 rounded-full font-semibold">Checkout →</span>
+                                  <span className="text-[9px] bg-success/10 text-success px-1.5 rounded-full font-semibold">Checkout →</span>
                                 </div>
                               )}
                             </div>
@@ -474,6 +523,164 @@ export function AppointmentsClient({
           onTimeChange={updateTime}
         />
       )}
+    </div>
+  );
+}
+
+// ── Service options ───────────────────────────────────────────────────────────
+const BOOKING_SERVICES = [
+  "Consultation",
+  "Acne Clearance Program",
+  "Carbon Laser Peel",
+  "Chemical Peel",
+  "Laser Hair Reduction",
+  "Microneedling for Scars",
+  "Q-Switch Laser Toning",
+  "GFC Therapy",
+  "PRP Therapy",
+  "Hydrafacial",
+];
+
+const SLOT_TIMES = Array.from({ length: 22 }, (_, i) => {
+  const h = 9 + Math.floor(i / 2);
+  const m = i % 2 === 0 ? "00" : "30";
+  return `${String(h).padStart(2, "0")}:${m}`;
+}).filter(t => parseInt(t) < 20); // up to 19:30
+
+// ── Booking modal ─────────────────────────────────────────────────────────────
+function BookingModal({
+  defaultDate,
+  onClose,
+  onBooked,
+}: {
+  defaultDate: string;
+  onClose: () => void;
+  onBooked: (appt: AppointmentRow) => void;
+}) {
+  const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [date, setDate] = useState(defaultDate);
+  const [time, setTime] = useState("10:00");
+  const [service, setService] = useState(BOOKING_SERVICES[0]);
+  const [phase, setPhase] = useState<"idle" | "submitting" | "done">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!phone.trim()) { setError("Patient phone is required"); return; }
+    if (!name.trim()) { setError("Patient name is required"); return; }
+    setError(null);
+    setPhase("submitting");
+    try {
+      const appointment_ts = `${date}T${time}:00`;
+      const res = await fetch("/api/appointments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: phone.trim(), patient_name: name.trim(), service_type: service, appointment_ts }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "Booking failed");
+      }
+      const data = await res.json();
+      setPhase("done");
+      setTimeout(() => onBooked(data.appointment ?? data), 800);
+    } catch (e: any) {
+      setError(e.message ?? "Failed to book — please try again.");
+      setPhase("idle");
+    }
+  };
+
+  const today = new Date().toISOString().slice(0, 10);
+  const fieldCls = "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring";
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="w-full max-w-md bg-background rounded-2xl shadow-2xl border border-border overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4 text-primary" />
+            <span className="font-semibold text-sm">Book Appointment</span>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors p-1">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {phase === "done" ? (
+          <div className="px-5 py-8 flex flex-col items-center gap-3 text-center">
+            <CheckCircle2 className="h-10 w-10 text-success0" />
+            <div className="font-semibold text-sm">Appointment booked!</div>
+            <div className="text-xs text-muted-foreground">{service} — {date} at {time}</div>
+          </div>
+        ) : (
+          <div className="px-5 py-4 space-y-3">
+            {/* Patient info */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Patient Phone *</label>
+                <input
+                  type="tel"
+                  placeholder="+91 98765 43210"
+                  value={phone}
+                  onChange={e => setPhone(e.target.value)}
+                  className={fieldCls}
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Patient Name *</label>
+                <input
+                  type="text"
+                  placeholder="Full name"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  className={fieldCls}
+                />
+              </div>
+            </div>
+
+            {/* Service */}
+            <div>
+              <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Service</label>
+              <select value={service} onChange={e => setService(e.target.value)} className={fieldCls}>
+                {BOOKING_SERVICES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            {/* Date + Time */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Date</label>
+                <input
+                  type="date"
+                  value={date}
+                  min={today}
+                  onChange={e => setDate(e.target.value)}
+                  className={fieldCls}
+                />
+              </div>
+              <div>
+                <label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide block mb-1">Time</label>
+                <select value={time} onChange={e => setTime(e.target.value)} className={fieldCls}>
+                  {SLOT_TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {error && <p className="text-xs text-destructive">{error}</p>}
+
+            <div className="flex gap-2 pt-1">
+              <Button variant="outline" className="flex-1" onClick={onClose} disabled={phase === "submitting"}>
+                Cancel
+              </Button>
+              <Button className="flex-1 gap-2" onClick={handleSubmit} disabled={phase === "submitting"}>
+                {phase === "submitting" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                Book
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -617,6 +824,26 @@ function DetailDrawer({
   const clash = hasClash(appt, allAppts);
   const [saved, setSaved] = useState(false);
 
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      await panelRef.current?.requestFullscreen?.();
+      setIsFullscreen(true);
+    } else {
+      await document.exitFullscreen?.();
+      setIsFullscreen(false);
+    }
+  };
+
+  // Treatment OTP state
+  const [treatmentOtp] = useState(() => Math.floor(100000 + Math.random() * 900000).toString());
+  const [showTreatmentOtp, setShowTreatmentOtp] = useState(false);
+  const [treatmentOtpInput, setTreatmentOtpInput] = useState("");
+  const [treatmentOtpOk, setTreatmentOtpOk] = useState(false);
+
   // Auto-switch tab when status advances — nothing stays locked
   useEffect(() => {
     if (appt.status === "arrived") setTab("checkout");
@@ -718,7 +945,8 @@ function DetailDrawer({
     <div className="fixed inset-0 z-50 flex" onClick={onClose}>
       <div className="fixed inset-0 bg-black/40" />
       <div
-        className="relative ml-auto flex h-full w-full max-w-[560px] flex-col bg-card border-l border-border shadow-2xl overflow-hidden"
+        ref={panelRef}
+        className={`relative ml-auto flex h-full w-full ${isFullscreen ? "max-w-full" : "max-w-[560px]"} flex-col bg-card border-l border-border shadow-2xl overflow-hidden`}
         onClick={e => e.stopPropagation()}
       >
         {/* ── Header ── */}
@@ -734,14 +962,33 @@ function DetailDrawer({
             </div>
             <div className="text-xs text-muted-foreground mt-1">{appt.service_type} · {appt.appointment_ts.slice(11,16)} · {appt.branch_name}</div>
             {clash && (
-              <div className="flex items-center gap-1.5 text-xs text-red-600 font-medium mt-1">
+              <div className="flex items-center gap-1.5 text-xs text-destructive font-medium mt-1">
                 <AlertTriangle className="h-3.5 w-3.5" />Doctor schedule clash
               </div>
             )}
           </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground mt-0.5 shrink-0 p-1">
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+              className="rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+            >
+              {isFullscreen ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/>
+                  <path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+                  <path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+                </svg>
+              )}
+            </button>
+            <button onClick={onClose} className="text-muted-foreground hover:text-foreground mt-0.5 p-1">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
         {/* ── Visual status pipeline ── */}
@@ -756,7 +1003,7 @@ function DetailDrawer({
                   <div className="flex flex-col items-center flex-1 min-w-0">
                     <div className={[
                       "flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all",
-                      done   ? "bg-emerald-500 text-white"          : "",
+                      done   ? "bg-success/50 text-white"          : "",
                       active ? "bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2" : "",
                       !done && !active ? "bg-secondary text-muted-foreground border border-border" : "",
                     ].join(" ")}>
@@ -764,7 +1011,7 @@ function DetailDrawer({
                     </div>
                     <div className={[
                       "text-[9px] mt-1 font-medium text-center leading-tight",
-                      active ? "text-primary" : done ? "text-emerald-600" : "text-muted-foreground",
+                      active ? "text-primary" : done ? "text-success" : "text-muted-foreground",
                     ].join(" ")}>{s.label}</div>
                   </div>
                   {i < STATUS_PIPELINE.length - 1 && (
@@ -778,54 +1025,95 @@ function DetailDrawer({
           {/* Big primary CTA for current step */}
           <div className="space-y-2">
             {appt.status === "booked" && (
-              <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+              <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 space-y-2">
                 <div className="text-xs font-semibold text-blue-800 flex items-center gap-2">
                   <Phone className="h-3.5 w-3.5" />
                   Step 1 — Call the patient to confirm they&apos;re coming
                 </div>
                 <a href={`tel:${appt.phone}`}
-                  className="flex items-center gap-2 rounded-md bg-white border border-blue-200 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors w-full justify-center">
+                  className="flex items-center gap-2 rounded-md bg-white border border-primary/30 px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/5 transition-colors w-full justify-center">
                   📞 Call {appt.patient_name} · {appt.phone}
                 </a>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 h-9"
+                <Button className="w-full bg-success hover:bg-emerald-700 h-9"
                   onClick={() => onStatusChange(appt.id, "confirmed")}>
                   <CheckCircle2 className="h-4 w-4 mr-2" />Mark as Called &amp; Confirmed
                 </Button>
               </div>
             )}
             {appt.status === "confirmed" && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+              <div className="rounded-lg border border-border bg-secondary p-3 space-y-2">
                 <div className="text-xs font-semibold text-amber-800">Step 2 — When patient walks in, mark them as arrived</div>
-                <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0 h-10"
+                <Button className="w-full bg-secondary0 hover:bg-amber-600 text-white border-0 h-10"
                   onClick={() => onStatusChange(appt.id, "arrived")}>
                   Patient has Arrived →
                 </Button>
               </div>
             )}
-            {appt.status === "arrived" && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
+            {appt.status === "arrived" && !showTreatmentOtp && (
+              <div className="rounded-lg border border-border bg-secondary p-3 space-y-2">
                 <div className="text-xs font-semibold text-amber-800">Step 3 — Checkout the patient or start their treatment session</div>
                 <div className="flex gap-2">
-                  <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-9"
+                  <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
                     onClick={() => setTab("checkout")}>
                     <ShoppingBag className="h-4 w-4 mr-1.5" />Checkout →
                   </Button>
-                  <Button className="flex-1 bg-violet-600 hover:bg-violet-700 text-white border-0 h-9"
-                    onClick={() => setTab("treatment")}>
+                  <Button className="flex-1 bg-primary hover:bg-violet-700 text-white border-0 h-9"
+                    onClick={() => setShowTreatmentOtp(true)}>
                     Treatment →
                   </Button>
                 </div>
               </div>
             )}
+            {appt.status === "arrived" && showTreatmentOtp && (
+              <div className="rounded-lg border border-violet-200 bg-primary/5 p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-violet-800">Treatment authorisation — patient confirms</div>
+                  <button onClick={() => { setShowTreatmentOtp(false); setTreatmentOtpInput(""); setTreatmentOtpOk(false); }}
+                    className="text-xs text-muted-foreground underline hover:text-foreground">Cancel</button>
+                </div>
+                <div className="rounded-xl border-2 border-violet-200 bg-white px-4 py-3 text-center space-y-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-500">Session Code</div>
+                  <div className="text-4xl font-bold tracking-[0.25em] font-mono text-violet-900">
+                    {treatmentOtp.slice(0, 3)}-{treatmentOtp.slice(3)}
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={6}
+                  value={treatmentOtpInput}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                    setTreatmentOtpInput(val);
+                    if (val === treatmentOtp) {
+                      setTreatmentOtpOk(true);
+                      setTimeout(() => { setShowTreatmentOtp(false); setTab("treatment"); }, 600);
+                    }
+                  }}
+                  placeholder="Patient enters code"
+                  className="w-full text-center text-xl font-mono tracking-[0.3em] rounded-xl border-2 border-violet-300 py-2.5 px-4 focus:outline-none focus:border-violet-500 bg-white"
+                />
+                {treatmentOtpOk && (
+                  <div className="flex items-center justify-center gap-1.5 text-success text-sm font-semibold">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    Confirmed — opening treatment…
+                  </div>
+                )}
+                {treatmentOtpInput.length === 6 && !treatmentOtpOk && (
+                  <div className="text-xs text-destructive text-center font-medium">Incorrect code — ask the patient to re-enter</div>
+                )}
+              </div>
+            )}
             {appt.status === "in_session" && (
-              <div className="rounded-lg border border-violet-200 bg-violet-50 p-3">
+              <div className="rounded-lg border border-violet-200 bg-primary/5 p-3">
                 <div className="text-xs font-semibold text-violet-800">Session in progress — fill treatment notes and mark complete in Treatment tab</div>
               </div>
             )}
             {appt.status === "converted" && (
-              <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-2">
-                <div className="text-xs font-semibold text-emerald-800">Session done ✓ — Record materials used in the Inventory tab</div>
-                <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white border-0 h-9"
+              <div className="rounded-lg border border-success/30 bg-success/5 p-3 space-y-2">
+                <div className="text-xs font-semibold text-success">Session done ✓ — Record materials used in the Inventory tab</div>
+                <Button className="w-full bg-success hover:bg-emerald-700 text-white border-0 h-9"
                   onClick={() => setTab("inventory")}>
                   Open Inventory (FnO) →
                 </Button>
@@ -839,7 +1127,7 @@ function DetailDrawer({
                   <button className="flex-1 text-[11px] text-orange-600 border border-orange-200 rounded-md py-1.5 hover:bg-orange-50 transition-colors font-medium"
                     onClick={() => onStatusChange(appt.id, "rescheduled")}>Reschedule</button>
                 )}
-                <button className="flex-1 text-[11px] text-red-500 border border-red-200 rounded-md py-1.5 hover:bg-red-50 transition-colors font-medium"
+                <button className="flex-1 text-[11px] text-destructive border border-destructive/30 rounded-md py-1.5 hover:bg-destructive/5 transition-colors font-medium"
                   onClick={() => onStatusChange(appt.id, "no_show")}>No Show / Cancel</button>
               </div>
             )}
@@ -871,7 +1159,7 @@ function DetailDrawer({
             >
               <div className="flex items-center gap-1">
                 {t.done
-                  ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  ? <CheckCircle2 className="h-3.5 w-3.5 text-success0" />
                   : <t.icon className="h-3.5 w-3.5" />}
                 {t.label}
               </div>
@@ -1023,8 +1311,8 @@ function DetailDrawer({
                       {["Front","Left","Right","Close-up"].map(angle => {
                         const captured = photos.find(p => p.angle === angle);
                         return (
-                          <label key={angle} className={"flex flex-col items-center justify-center gap-1 rounded-lg border-2 cursor-pointer p-2 transition-colors " + (captured ? "border-emerald-400 bg-emerald-50" : "border-dashed border-border bg-secondary/20 hover:bg-secondary/60")}>
-                            {captured ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Camera className="h-4 w-4 text-muted-foreground" />}
+                          <label key={angle} className={"flex flex-col items-center justify-center gap-1 rounded-lg border-2 cursor-pointer p-2 transition-colors " + (captured ? "border-emerald-400 bg-success/5" : "border-dashed border-border bg-secondary/20 hover:bg-secondary/60")}>
+                            {captured ? <CheckCircle2 className="h-5 w-5 text-success0" /> : <Camera className="h-4 w-4 text-muted-foreground" />}
                             <span className="text-[10px] text-center">{angle}</span>
                             <input type="file" accept="image/*" className="sr-only"
                               onChange={e => {
@@ -1040,7 +1328,7 @@ function DetailDrawer({
                     <label className="flex items-center gap-2 text-sm mt-3 cursor-pointer select-none">
                       <input type="checkbox" checked={consentSigned} onChange={e => setConsentSigned(e.target.checked)} className="h-4 w-4 accent-primary" />
                       <span>Consent form signed &amp; uploaded</span>
-                      {consentSigned && <CheckCircle2 className="h-4 w-4 text-emerald-500 ml-auto" />}
+                      {consentSigned && <CheckCircle2 className="h-4 w-4 text-success0 ml-auto" />}
                     </label>
                   </StepBlock>
 
@@ -1068,11 +1356,11 @@ function DetailDrawer({
                   <StepBlock num={3} title="Start Session" desc="Tap below to timestamp session start. The appointment moves to 'In Session' on the board." done={!!startedAt}>
                     <div className="mt-3">
                       {startedAt ? (
-                        <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 font-medium flex items-center gap-2">
+                        <div className="rounded-lg bg-success/5 border border-success/30 px-4 py-3 text-sm text-success font-medium flex items-center gap-2">
                           <CheckCircle2 className="h-4 w-4 shrink-0" />Session started at {startedAt}
                         </div>
                       ) : (
-                        <Button className="w-full bg-violet-600 hover:bg-violet-700" onClick={handleStartSession} disabled={saving}>
+                        <Button className="w-full bg-primary hover:bg-violet-700" onClick={handleStartSession} disabled={saving}>
                           <Clock className="h-4 w-4 mr-2" />Start Session Now
                         </Button>
                       )}
@@ -1087,12 +1375,12 @@ function DetailDrawer({
                           placeholder="Parameters used, patient response, any observations, next session plan…"
                           className={INPUT_CLS + " resize-none"} />
                         {!treatmentDone && (
-                          <Button className="w-full bg-emerald-600 hover:bg-emerald-700" onClick={handleCompleteSession} disabled={saving}>
+                          <Button className="w-full bg-success hover:bg-emerald-700" onClick={handleCompleteSession} disabled={saving}>
                             {saving ? "Completing…" : <><CheckCircle2 className="h-4 w-4 mr-2" />Mark Session Complete &amp; Open Inventory</>}
                           </Button>
                         )}
                         {treatmentDone && (
-                          <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700 font-medium flex items-center gap-2">
+                          <div className="rounded-lg bg-success/5 border border-success/30 px-4 py-3 text-sm text-success font-medium flex items-center gap-2">
                             <CheckCircle2 className="h-4 w-4 shrink-0" />Session complete — go to the Inventory tab to record materials used.
                           </div>
                         )}
@@ -1114,9 +1402,9 @@ function DetailDrawer({
                   <div className="text-xs text-muted-foreground">Complete the Treatment tab first.</div>
                 </div>
               ) : fnoSubmitted ? (
-                <div className="rounded-lg bg-emerald-50 border border-emerald-200 p-6 text-center space-y-2">
-                  <CheckCircle2 className="h-10 w-10 text-emerald-500 mx-auto" />
-                  <div className="font-semibold text-emerald-700">Inventory updated</div>
+                <div className="rounded-lg bg-success/5 border border-success/30 p-6 text-center space-y-2">
+                  <CheckCircle2 className="h-10 w-10 text-success0 mx-auto" />
+                  <div className="font-semibold text-success">Inventory updated</div>
                   <div className="text-sm text-muted-foreground">All material quantities deducted from clinic stock.</div>
                 </div>
               ) : (
@@ -1126,7 +1414,7 @@ function DetailDrawer({
                     <div className="text-xs text-muted-foreground mt-0.5">
                       For: <span className="font-medium text-foreground">{appt.service_type}</span>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-1 rounded-lg bg-blue-50 border border-blue-100 px-3 py-2">
+                    <div className="text-xs text-muted-foreground mt-1 rounded-lg bg-primary/5 border border-primary/20 px-3 py-2">
                       <strong>How to use:</strong> Mandatory items are pre-filled — just verify the number. For Optional items, enter the actual quantity you used. Then click Submit.
                     </div>
                   </div>
@@ -1165,8 +1453,8 @@ function DetailDrawer({
                         <div className="flex justify-center">
                           <span className={"inline-flex items-center rounded-full px-2 py-0.5 text-[9px] font-semibold border " +
                             (item.mandatory
-                              ? "bg-blue-50 text-blue-700 border-blue-200"
-                              : "bg-amber-50 text-amber-700 border-amber-200")}>
+                              ? "bg-primary/5 text-primary border-primary/30"
+                              : "bg-secondary text-muted-foreground border-border")}>
                             {item.mandatory ? "Auto-fill" : "Enter qty"}
                           </span>
                         </div>
@@ -1174,12 +1462,12 @@ function DetailDrawer({
                     ))}
                   </div>
 
-                  <div className="flex items-start gap-2.5 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
-                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                    <p className="text-xs text-amber-700">Submitting will permanently deduct these quantities from clinic inventory. Double-check before submitting.</p>
+                  <div className="flex items-start gap-2.5 rounded-lg bg-secondary border border-border px-3 py-2.5">
+                    <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground">Submitting will permanently deduct these quantities from clinic inventory. Double-check before submitting.</p>
                   </div>
 
-                  <Button className="w-full bg-emerald-600 hover:bg-emerald-700 h-11" onClick={submitInventory} disabled={saving}>
+                  <Button className="w-full bg-success hover:bg-emerald-700 h-11" onClick={submitInventory} disabled={saving}>
                     {saving ? "Submitting…" : <><CheckCircle2 className="h-4 w-4 mr-2" />Submit &amp; Update Clinic Inventory</>}
                   </Button>
                 </>
@@ -1210,10 +1498,10 @@ function StepBlock({ num, title, desc, done = false, children }: {
   num: number; title: string; desc: string; done?: boolean; children?: React.ReactNode;
 }) {
   return (
-    <div className={"rounded-lg border p-4 " + (done ? "border-emerald-200 bg-emerald-50/50" : "border-border bg-card")}>
+    <div className={"rounded-lg border p-4 " + (done ? "border-success/30 bg-success/5/50" : "border-border bg-card")}>
       <div className="flex items-start gap-3">
         <div className={"flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold " +
-          (done ? "bg-emerald-500 text-white" : "bg-primary text-primary-foreground")}>
+          (done ? "bg-success/50 text-white" : "bg-primary text-primary-foreground")}>
           {done ? <CheckCircle2 className="h-4 w-4" /> : num}
         </div>
         <div className="flex-1 min-w-0">

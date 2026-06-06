@@ -113,10 +113,10 @@ export function ManagerClient({
         <button
           onClick={openWhatsAppQueue}
           className={[
-            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors shadow-sm",
+            "inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors",
             tab === "whatsapp"
               ? "bg-primary text-primary-foreground border-primary"
-              : "bg-card border-border hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700",
+              : "bg-card border-border hover:bg-success/5 hover:border-success/40 hover:text-success",
           ].join(" ")}
         >
           <MessageSquare className="h-4 w-4" />
@@ -616,7 +616,7 @@ function InactivePane({
                     <TD className="font-medium">{r.patient_name}</TD>
                     <TD><PhoneCell phone={r.phone} /></TD>
                     <TD><Badge variant="outline">{r.branch_name}</Badge></TD>
-                    <TD className="text-sm text-amber-600 font-medium">{r.context.days_since_last} days ago</TD>
+                    <TD className="text-sm text-muted-foreground font-medium">{r.context.days_since_last} days ago</TD>
                     <TD className="text-right font-medium text-sm">{inr(r.context.total_spent ?? 0)}</TD>
                   </TR>
                 ))}
@@ -1131,7 +1131,7 @@ function InlineWhatsAppQueue({
                   <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 border-b border-border bg-secondary/30">
                     <div>
                       <div className="text-sm font-semibold">{m.patient_name}</div>
-                      <a href={`tel:${m.phone}`} className="text-xs text-emerald-600 hover:underline flex items-center gap-1"><Phone className="h-3 w-3" />{m.phone}</a>
+                      <a href={`tel:${m.phone}`} className="text-xs text-success hover:underline flex items-center gap-1"><Phone className="h-3 w-3" />{m.phone}</a>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline" className="font-mono text-[10px]">{m.discount_code}</Badge>
@@ -1195,7 +1195,7 @@ function PhoneCell({ phone }: { phone: string }) {
   return (
     <a
       href={`tel:${phone}`}
-      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 transition-colors"
+      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-secondary/50 px-2 py-1 text-xs font-medium text-foreground hover:bg-success/5 hover:border-success/40 hover:text-success transition-colors"
       onClick={e => e.stopPropagation()}
     >
       <Phone className="h-3 w-3" />

@@ -43,10 +43,10 @@ function DetailDrawer({ item, type, onClose }: { item: Service | Product; type: 
                 <span className="font-mono text-xs text-muted-foreground">{item.item_code}</span>
               )}
               {!!item.is_new_launch && (
-                <Badge className="text-[10px] bg-emerald-500 text-white">New Launch</Badge>
+                <Badge className="text-[10px] bg-success/50 text-white">New Launch</Badge>
               )}
               {(item.discount_pct ?? 0) > 0 && (
-                <Badge className="text-[10px] bg-amber-500 text-white">{item.discount_pct}% off</Badge>
+                <Badge className="text-[10px] bg-secondary0 text-white">{item.discount_pct}% off</Badge>
               )}
             </div>
             <h3 className="mt-2 text-base font-bold text-foreground">{item.name}</h3>
@@ -66,7 +66,7 @@ function DetailDrawer({ item, type, onClose }: { item: Service | Product; type: 
             <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Price</div>
             <div className="text-lg font-bold text-foreground mt-0.5">{inr(item.price_inr)}</div>
             {(item.discount_pct ?? 0) > 0 && (
-              <div className="text-xs text-amber-600 font-medium">
+              <div className="text-xs text-muted-foreground font-medium">
                 → {inr(Math.round(item.price_inr * (1 - (item.discount_pct ?? 0) / 100)))} after discount
               </div>
             )}
@@ -194,8 +194,8 @@ export function CatalogClient({ initialProducts, initialServices }: { initialPro
               <div className="flex items-center gap-2">
                 <CardTitle className="text-sm">{cat}</CardTitle>
                 <span className="text-xs text-muted-foreground">({items.length})</span>
-                {items.some(i => i.is_new_launch) && <Badge className="text-[9px] bg-emerald-500 text-white py-0">New</Badge>}
-                {items.some(i => (i.discount_pct ?? 0) > 0) && <Badge className="text-[9px] bg-amber-500 text-white py-0">Sale</Badge>}
+                {items.some(i => i.is_new_launch) && <Badge className="text-[9px] bg-success/50 text-white py-0">New</Badge>}
+                {items.some(i => (i.discount_pct ?? 0) > 0) && <Badge className="text-[9px] bg-secondary0 text-white py-0">Sale</Badge>}
               </div>
               {expandedCategory === cat ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
             </button>
@@ -236,8 +236,8 @@ function CatalogCard({ item, onClick }: { item: CatalogItem; onClick: () => void
           <Badge variant={item._type === "service" ? "accent" : "outline"} className="text-[9px]">
             {item._type === "service" ? "Service" : "Product"}
           </Badge>
-          {!!item.is_new_launch && <Badge className="text-[9px] bg-emerald-500 text-white">New</Badge>}
-          {hasDiscount && <Badge className="text-[9px] bg-amber-500 text-white">{item.discount_pct}% off</Badge>}
+          {!!item.is_new_launch && <Badge className="text-[9px] bg-success/50 text-white">New</Badge>}
+          {hasDiscount && <Badge className="text-[9px] bg-secondary0 text-white">{item.discount_pct}% off</Badge>}
         </div>
         {item.item_code && <span className="font-mono text-[9px] text-muted-foreground shrink-0">{item.item_code}</span>}
       </div>
@@ -249,7 +249,7 @@ function CatalogCard({ item, onClick }: { item: CatalogItem; onClick: () => void
         {hasDiscount ? (
           <>
             <span className="text-xs line-through text-muted-foreground">{inr(item.price_inr)}</span>
-            <span className="text-sm font-bold text-amber-600">{inr(discountedPrice!)}</span>
+            <span className="text-sm font-bold text-muted-foreground">{inr(discountedPrice!)}</span>
           </>
         ) : (
           <span className="text-sm font-bold text-foreground">{inr(item.price_inr)}</span>

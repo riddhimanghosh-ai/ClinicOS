@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useEffect, useState, Suspense } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import SharedNavRail from '../components/NavRail';
 import MobileTabBar from '../components/MobileTabBar';
 import { PrescriptionDocument } from '@/components/prescription-document';
-
-const DEMO_PATIENT_ID = 1;
 
 /* ── Shared Icons ── */
 const Icon = ({ children, size = 24, style }: { children: React.ReactNode; size?: number; style?: React.CSSProperties }) => (
@@ -19,6 +17,8 @@ const IconRx = ({ size = 24 }: { size?: number }) => <Icon size={size}><path d="
 const IconBell = ({ size = 24, style }: { size?: number; style?: React.CSSProperties }) => <Icon size={size} style={style}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></Icon>;
 const IconSearch = ({ size = 24, style }: { size?: number; style?: React.CSSProperties }) => <Icon size={size} style={style}><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></Icon>;
 const IconDoc = ({ size = 24 }: { size?: number }) => <Icon size={size}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></Icon>;
+const IconChevron = ({ size = 24, style }: { size?: number; style?: React.CSSProperties }) => <Icon size={size} style={style}><path d="M6 9 L12 15 L18 9" /></Icon>;
+
 
 const NavRail = ({ active }: { active: string }) => <SharedNavRail active={active} />;
 
@@ -44,18 +44,13 @@ const MobileShell = ({ active = '', children }: { children: React.ReactNode; act
   </div>
 );
 
-const AnimatedMeter = ({ pct, gold = false }: { pct: number; gold?: boolean }) => (
-  <div style={{ height: 4, background: 'var(--hair-2)', borderRadius: 2, overflow: 'hidden' }}>
-    <div style={{ height: '100%', width: `${pct}%`, background: gold ? 'var(--gold)' : 'var(--ink)', transition: 'width 1s ease' }} />
-  </div>
-);
 
 const MEDS = [
-  { name: 'Tretinoin 0.025% Cream', dose: '0.025%', form: 'cream', sched: 'PM · nightly', start: 'Apr 02', adh: 94, daysLeft: 12, total: 30, qty: '15g', active: true, kind: 'rx' },
-  { name: 'Azelaic Acid 15% Gel', dose: '15%', form: 'gel', sched: 'PM · spot treatment', start: 'Apr 16', adh: 88, daysLeft: 8, total: 30, qty: '20g', active: true, kind: 'rx' },
-  { name: 'Kaya Niacinamide 10% Serum', dose: '10%', form: 'serum', sched: 'Morning & Night', start: 'Mar 14', adh: 96, daysLeft: 22, total: 60, qty: '30ml', active: true, kind: 'otc' },
-  { name: 'Kaya Antox Vit-C Serum', dose: '15%', form: 'serum', sched: 'Every morning', start: 'Mar 14', adh: 91, daysLeft: 18, total: 60, qty: '30ml', active: true, kind: 'otc' },
-  { name: 'Kaya Daily Shield SPF 50', dose: 'PA++++', form: 'sunscreen', sched: 'AM · reapply every 2h', start: 'Mar 14', adh: 100, daysLeft: 5, total: 30, qty: '50ml', active: true, kind: 'otc' },
+  { name: 'Tretinoin 0.025% Cream',     dose: '0.025%', form: 'cream',     sched: 'PM · nightly',          start: 'Apr 02', streak: 14, isLow: true,  earlyEmpty: false, qty: '15g',  daysSupply: 30, active: true, kind: 'rx',  nextDose: '21:00', logsToday: false },
+  { name: 'Azelaic Acid 15% Gel',       dose: '15%',    form: 'gel',       sched: 'PM · spot treatment',   start: 'Apr 16', streak: 8,  isLow: true,  earlyEmpty: true,  qty: '20g',  daysSupply: 30, active: true, kind: 'rx',  nextDose: '21:00', logsToday: true  },
+  { name: 'Kaya Niacinamide 10% Serum', dose: '10%',    form: 'serum',     sched: 'Morning & Night',       start: 'Mar 14', streak: 22, isLow: false, earlyEmpty: false, qty: '30ml', daysSupply: 45, active: true, kind: 'otc', nextDose: '08:00', logsToday: true  },
+  { name: 'Kaya Antox Vit-C Serum',     dose: '15%',    form: 'serum',     sched: 'Every morning',         start: 'Mar 14', streak: 18, isLow: false, earlyEmpty: false, qty: '30ml', daysSupply: 45, active: true, kind: 'otc', nextDose: '08:00', logsToday: false },
+  { name: 'Kaya Daily Shield SPF 50',   dose: 'PA++++', form: 'sunscreen', sched: 'AM · reapply every 2h', start: 'Mar 14', streak: 30, isLow: true,  earlyEmpty: false, qty: '50ml', daysSupply: 30, active: true, kind: 'otc', nextDose: '08:00', logsToday: true  },
 ];
 
 const PAST_MEDS = [
@@ -64,26 +59,221 @@ const PAST_MEDS = [
   { name: 'Adapalene 0.1% Gel', dose: '0.1%', period: 'Sep – Nov 2024', adh: 78, reason: 'Switched to Tretinoin' },
 ];
 
-/* ── Prescription documents from DB ── */
-function CustomerRxSection() {
-  const [data, setData] = useState<{ patient: any; prescriptions: any[] } | null>(null);
-  useEffect(() => {
-    fetch(`/api/patients/${DEMO_PATIENT_ID}/prescriptions`).then(r => r.json()).then(setData).catch(() => {});
-  }, []);
-  if (!data?.patient) return <div style={{ color: 'var(--mute)', fontSize: 13, padding: '32px 0' }}>Loading prescriptions…</div>;
-  const list = data.prescriptions?.length ? data.prescriptions : [null];
+/* ── Prescription data (RxRow shape) ── */
+const PRESCRIPTIONS_DATA = [
+  {
+    id: 1,
+    date: '2025-05-13',
+    label: 'Phase 3 regimen',
+    doctor: 'Dr. Ananya Sharma',
+    specialty: 'Dermatology',
+    clinicalRecommendation: 'Continuing with maintenance regimen post Phase 2 peels. Emphasis on daily sun protection and nightly retinoid to sustain PIH improvement. Add niacinamide as a barrier-support step.',
+    items: [
+      { problem: 'Post-inflammatory hyperpigmentation', problem_type: 'chronic' as const, product: 'Tretinoin 0.025% Cream',        product_detail: '15g tube',  dosage: 'Apply pea-sized amount',  dosage_detail: 'PM · nightly · avoid eye area',     cost: 580 },
+      { problem: 'Active acne (hormonal)',              problem_type: 'acute' as const,   product: 'Azelaic Acid 15% Gel',          product_detail: '20g tube',  dosage: 'Spot treatment',          dosage_detail: 'PM · on active lesions only',        cost: 490 },
+      { problem: 'Brightening + antioxidant',           problem_type: null,               product: 'Kaya Antox Vit-C Serum',        product_detail: '30ml',      dosage: '3–4 drops',               dosage_detail: 'AM · before moisturiser',            cost: 420 },
+      { problem: 'Sun protection (mandatory)',           problem_type: null,               product: 'Kaya Daily Shield SPF 50 PA++++', product_detail: '50ml',    dosage: 'Generous application',    dosage_detail: 'AM · reapply every 2h outdoors',    cost: 650 },
+    ],
+  },
+  {
+    id: 2,
+    date: '2025-03-14',
+    label: 'Initial prescription',
+    doctor: 'Dr. Ananya Sharma',
+    specialty: 'Dermatology',
+    clinicalRecommendation: 'Starting regimen for mild PIH and hormonal acne. Keep routine minimal — focus on actives that target pigment and barrier. Introduce retinoid slowly (every other night for 2 weeks).',
+    items: [
+      { problem: 'Post-inflammatory hyperpigmentation', problem_type: 'chronic' as const, product: 'Kaya Niacinamide 10% Serum',   product_detail: '30ml',      dosage: '2–3 drops',               dosage_detail: 'AM + PM · mix with moisturiser',    cost: null },
+      { problem: 'Active acne',                         problem_type: 'acute' as const,   product: 'Kaya Clarifying Face Wash',    product_detail: '100ml',     dosage: 'Twice daily',             dosage_detail: 'AM + PM · gentle lather, rinse cool', cost: null },
+      { problem: 'Sun protection (mandatory)',           problem_type: null,               product: 'Kaya Daily Shield SPF 50 PA++++', product_detail: '50ml',   dosage: 'Generous application',    dosage_detail: 'AM · every morning without fail',   cost: 650 },
+    ],
+  },
+];
+
+const PATIENT_STUB = { name: 'Priya R.', dob: '1993-04-12', guest_code: 'GDRC10001', gender: 'F' };
+
+/* ── Prescription accordion list ── */
+function RxTimeline() {
+  const [expanded, setExpanded] = useState<number | null>(PRESCRIPTIONS_DATA[0]?.id ?? null);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {list.map((rx: any, i: number) => (
-        <PrescriptionDocument
-          key={rx?.id ?? i}
-          patient={data.patient}
-          items={rx?.items ?? []}
-          clinicalRecommendation={rx?.clinical_recommendation ?? null}
-          dispensingFeeInr={rx?.dispensing_fee_inr ?? null}
-          createdAt={rx?.created_at ?? null}
-        />
-      ))}
+    <div style={{ border: '1px solid var(--hair)', overflow: 'hidden' }}>
+      {PRESCRIPTIONS_DATA.map((rx, i) => {
+        const open = expanded === rx.id;
+        const total = rx.items.reduce((s, it) => s + (it.cost ?? 0), 0);
+        return (
+          <div key={rx.id} style={{ borderBottom: i < PRESCRIPTIONS_DATA.length - 1 ? '1px solid var(--hair)' : 'none' }}>
+            {/* Row header */}
+            <div
+              onClick={() => setExpanded(open ? null : rx.id)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 14, padding: '14px 18px',
+                cursor: 'pointer', background: open ? 'var(--paper-2)' : 'var(--paper)',
+                transition: 'background 0.15s',
+              }}
+            >
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{rx.label}</span>
+                  {i === 0 && (
+                    <span style={{ background: 'var(--brand)', color: '#fff', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', padding: '2px 7px' }}>LATEST</span>
+                  )}
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 3 }}>
+                  {rx.date} · {rx.doctor} · {rx.items.length} items
+                  {total > 0 && ` · ₹${total.toLocaleString('en-IN')}`}
+                </div>
+              </div>
+              <IconChevron size={14} style={{ flexShrink: 0, color: 'var(--mute)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+            </div>
+            {/* Expanded body: full prescription document */}
+            {open && (
+              <div style={{ borderTop: '1px solid var(--hair)', background: 'var(--paper)' }}>
+                <PrescriptionDocument
+                  patient={PATIENT_STUB}
+                  doctorName={rx.doctor}
+                  doctorSpecialty={rx.specialty}
+                  clinicalRecommendation={rx.clinicalRecommendation}
+                  items={rx.items}
+                  createdAt={rx.date}
+                  dispensingFeeInr={60}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Medication card ── */
+function MedCard({ m, onRemove }: { m: typeof MEDS[0]; onRemove: () => void }) {
+  const [logged, setLogged] = useState(m.logsToday);
+  const isRx = m.kind === 'rx';
+  const accentColor = isRx ? 'var(--brand)' : 'var(--gold)';
+  const adherencePct = Math.round((m.streak / m.daysSupply) * 100);
+  const daysLeft = Math.max(0, m.daysSupply - m.streak);
+
+  return (
+    <div style={{
+      border: '1px solid var(--hair)',
+      background: 'var(--paper)',
+      display: 'flex',
+      flexDirection: 'column',
+      borderRadius: 2,
+      overflow: 'hidden',
+      position: 'relative',
+    }}>
+      {/* Left accent stripe */}
+      <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: accentColor }} />
+
+      {/* Card body */}
+      <div style={{ padding: '16px 18px 16px 22px', flex: 1, display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+        {/* Header row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, lineHeight: 1.2 }}>{m.name}</span>
+              <span style={{
+                fontSize: 9, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '0.08em',
+                padding: '2px 7px', border: `1px solid ${accentColor}`,
+                color: accentColor, borderRadius: 2,
+              }}>{isRx ? 'Rx' : 'OTC'}</span>
+              {m.isLow && (
+                <span style={{ background: '#FEF3C7', color: '#92400E', fontSize: 9, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '0.08em', padding: '2px 7px', borderRadius: 2 }}>LOW</span>
+              )}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--mute)' }}>
+              <span style={{ fontFamily: 'var(--mono)', marginRight: 6 }}>{m.dose}</span>
+              {m.form} · {m.qty} · since {m.start}
+            </div>
+          </div>
+          {/* Streak bubble */}
+          <div style={{
+            width: 48, height: 48, borderRadius: '50%', flexShrink: 0,
+            background: m.streak >= 20 ? 'var(--gold)' : m.streak >= 10 ? '#FEF3C7' : 'var(--hair-2)',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <div style={{ fontSize: 15, fontWeight: 800, fontFamily: 'var(--mono)', lineHeight: 1, color: m.streak >= 20 ? '#fff' : m.streak >= 10 ? '#92400E' : 'var(--mute)' }}>{m.streak}</div>
+            <div style={{ fontSize: 8, fontFamily: 'var(--mono)', color: m.streak >= 20 ? 'rgba(255,255,255,0.8)' : 'var(--mute)', letterSpacing: '0.05em' }}>days</div>
+          </div>
+        </div>
+
+        {/* Schedule pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--paper-2)', padding: '7px 11px', borderRadius: 2 }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <span style={{ fontSize: 12, fontWeight: 500 }}>{m.sched}</span>
+          <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--mute)' }}>{m.nextDose}</span>
+        </div>
+
+        {/* 7-bar streak visualization */}
+        <div>
+          <div style={{ display: 'flex', gap: 3, marginBottom: 4 }}>
+            {Array.from({ length: 7 }).map((_, di) => {
+              const filled = di < Math.min(m.streak, 7);
+              const isToday = di === Math.min(m.streak - 1, 6);
+              return (
+                <div key={di} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <div style={{ width: '100%', height: 24, background: filled ? accentColor : 'var(--hair-2)', borderRadius: 3, opacity: filled ? 1 : 0.4, position: 'relative', transition: 'background 0.2s' }}>
+                    {isToday && <div style={{ position: 'absolute', top: 2, bottom: 2, left: 2, right: 2, borderRadius: 2, border: '1.5px solid rgba(255,255,255,0.5)' }} />}
+                  </div>
+                  <div style={{ fontSize: 8, color: 'var(--mute)', fontFamily: 'var(--mono)' }}>
+                    {['M','T','W','T','F','S','S'][di]}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: 10, color: 'var(--mute)' }}>{adherencePct}% adherence this supply</span>
+            <span style={{ fontSize: 10, color: daysLeft <= 5 ? 'var(--warn)' : 'var(--mute)', fontFamily: 'var(--mono)', fontWeight: daysLeft <= 5 ? 600 : 400 }}>{daysLeft}d remaining</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+          <button
+            onClick={() => setLogged(v => !v)}
+            className="btn ghost sm"
+            style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: logged ? '#F0FDF4' : undefined, color: logged ? '#166534' : undefined, border: logged ? '1px solid #BBF7D0' : undefined }}
+          >
+            {logged ? (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6 9 17l-5-5"/></svg> Logged</>
+            ) : (
+              <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg> Log dose</>
+            )}
+          </button>
+          {m.isLow && (
+            <button className="btn sm" style={{ flex: 1, background: '#F59E0B', color: '#fff', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4zm-10 2a2 2 0 1 0 0 4 2 2 0 0 0 0-4z"/></svg>
+              Refill now
+            </button>
+          )}
+          <button
+            onClick={onRemove}
+            className="btn ghost sm"
+            style={{ padding: '6px 12px', fontSize: 11, color: 'var(--mute)', border: '1px solid var(--hair)' }}
+          >
+            Empty
+          </button>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
+/* ── Medications card grid ── */
+function MedAccordion({ cols = 2 }: { cols?: number }) {
+  const [removed, setRemoved] = useState<number[]>([]);
+  const visible = MEDS.filter((_, i) => !removed.includes(i));
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>
+      {visible.map((m, vi) => {
+        const origIdx = MEDS.indexOf(m);
+        return <MedCard key={origIdx} m={m} onRemove={() => setRemoved(r => [...r, origIdx])} />;
+      })}
     </div>
   );
 }
@@ -129,7 +319,7 @@ function PrescriptionsDesktop({ defaultTab }: { defaultTab: 'medications' | 'pre
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar
           subtitle={tab === 'prescriptions' ? 'Prescriptions' : 'Medications'}
-          title={tab === 'prescriptions' ? 'Your prescriptions' : 'Active regimen'}
+          title="Medications and prescriptions"
           right={tab === 'prescriptions' ? <button className="btn ghost sm"><IconDoc size={14} /> Download</button> : undefined}
         />
 
@@ -163,47 +353,7 @@ function PrescriptionsDesktop({ defaultTab }: { defaultTab: 'medications' | 'pre
                   <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>5 medications · prescribed by Dr. Ananya Sharma</div>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
-                {MEDS.map((m, i) => {
-                  const isLow = m.daysLeft < 15;
-                  const pct = (m.daysLeft / m.total) * 100;
-                  return (
-                    <div key={i} style={{ border: '1px solid ' + (isLow ? 'rgba(192,57,43,0.3)' : 'var(--hair)'), background: isLow ? '#FEF9F9' : 'var(--paper)', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 0 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3, flex: 1 }}>{m.name}</div>
-                        {isLow && <span style={{ background: '#FEE2E2', color: 'var(--warn)', fontSize: 10, fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '0.08em', padding: '3px 8px', flexShrink: 0, marginLeft: 8 }}>LOW</span>}
-                      </div>
-                      <div style={{ fontSize: 11, color: 'var(--mute)', marginBottom: 14 }}>{m.form} · {m.qty} · started {m.start}</div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--paper-2)', marginBottom: 14 }}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--mute)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                        <span style={{ fontSize: 12, fontWeight: 500 }}>{m.sched}</span>
-                      </div>
-                      <div style={{ marginBottom: 12 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Adherence</span>
-                          <span style={{ fontSize: 16, fontWeight: 700, color: adhColor(m.adh), fontFamily: 'var(--mono)' }}>{m.adh}%</span>
-                        </div>
-                        <div style={{ height: 5, background: 'var(--hair-2)', borderRadius: 2 }}>
-                          <div style={{ height: '100%', width: `${m.adh}%`, background: adhColor(m.adh), borderRadius: 2, transition: 'width 1s ease' }} />
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: 16 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                          <span style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Supply</span>
-                          <span style={{ fontSize: 12, fontFamily: 'var(--mono)', color: isLow ? 'var(--warn)' : 'var(--ink)', fontWeight: 600 }}>{m.daysLeft} <span style={{ fontWeight: 400, color: 'var(--mute)' }}>/ {m.total} days</span></span>
-                        </div>
-                        <div style={{ height: 5, background: 'var(--hair-2)', borderRadius: 2 }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: isLow ? 'var(--warn)' : 'var(--ok)', borderRadius: 2, transition: 'width 1s ease' }} />
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
-                        <button className="btn ghost sm" style={{ flex: 1 }}>Log dose</button>
-                        {isLow && <button className="btn sm" style={{ flex: 1 }}>Refill now</button>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <MedAccordion />
 
               {/* Past medications */}
               <div style={{ marginTop: 36 }}>
@@ -227,7 +377,7 @@ function PrescriptionsDesktop({ defaultTab }: { defaultTab: 'medications' | 'pre
             </>
           ) : (
             /* Prescriptions tab */
-            <CustomerRxSection />
+            <RxTimeline />
           )}
         </div>
       </div>
@@ -243,11 +393,11 @@ function PrescriptionsMobile({ defaultTab }: { defaultTab: 'medications' | 'pres
   return (
     <MobileShell active="home">
       <div style={{ padding: '14px 16px 100px', height: '100%', overflow: 'auto' }}>
-        <div className="display" style={{ fontSize: 28 }}>
-          {tab === 'medications' ? <>Your <span style={{ color: 'var(--brand)' }}>medications</span></> : <>Your <span style={{ color: 'var(--brand)' }}>prescriptions</span></>}
+        <div className="display" style={{ fontSize: 26 }}>
+          Medications <span style={{ color: 'var(--brand)' }}>&amp;</span> prescriptions
         </div>
         <div className="muted" style={{ fontSize: 12, marginTop: 4, marginBottom: 16 }}>
-          {tab === 'medications' ? '5 active · 94% adherence (14d)' : 'From your doctor'}
+          {tab === 'medications' ? '5 active · 5 products in regimen' : 'From your doctor'}
         </div>
 
         <TabBar active={tab} onSwitch={setTab} />
@@ -264,24 +414,12 @@ function PrescriptionsMobile({ defaultTab }: { defaultTab: 'medications' | 'pres
               <div className="muted" style={{ fontSize: 11, marginTop: 8 }}>Next dose · Azelaic acid · 21:00</div>
             </div>
             <div className="eyebrow" style={{ marginTop: 22 }}>Active medications</div>
-            <div className="col" style={{ marginTop: 12, gap: 10 }}>
-              {MEDS.slice(0, 4).map((m, i) => (
-                <div key={i} className="panel" style={{ padding: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 6, background: 'var(--paper-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IconMed size={16} /></div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div className="row between center">
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{m.name}</div>
-                      <div className="num" style={{ fontSize: 11, color: m.adh >= 90 ? 'var(--mint)' : 'var(--brand)' }}>{m.adh}%</div>
-                    </div>
-                    <div className="muted" style={{ fontSize: 11 }}>{m.dose} · {m.sched}</div>
-                    <div style={{ marginTop: 6 }}><AnimatedMeter pct={m.adh} gold={m.adh >= 90} /></div>
-                  </div>
-                </div>
-              ))}
+            <div style={{ marginTop: 12 }}>
+              <MedAccordion cols={1} />
             </div>
           </>
         ) : (
-          <CustomerRxSection />
+          <RxTimeline />
         )}
       </div>
     </MobileShell>
@@ -296,8 +434,8 @@ function PrescriptionsInner() {
 
   return (
     <>
-      <div className="desktop-only"><PrescriptionsDesktop defaultTab={defaultTab} /></div>
-      <div className="mobile-only"><PrescriptionsMobile defaultTab={defaultTab} /></div>
+      <div className="desktop-only"><PrescriptionsDesktop key={defaultTab} defaultTab={defaultTab} /></div>
+      <div className="mobile-only"><PrescriptionsMobile key={defaultTab} defaultTab={defaultTab} /></div>
     </>
   );
 }

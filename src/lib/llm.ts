@@ -104,7 +104,67 @@ function safeParseJSON(text: string): Record<string, any> {
 function mockJSON(system: string, user: string): Record<string, any> {
   if (/extract.*tag/i.test(system)) return mockExtractTags(user);
   if (/clinical bullet|key.*observation|bullet.*point/i.test(system)) return mockBullets(user);
+  if (/PII redaction|personally identifying/i.test(system)) return mockMaskPii(user);
+  // Prescription parse fallback — produce minimal structured output
+  if (/spoken prescription|prescription dictation/i.test(system)) return mockParsePrescription(user);
   return {};
+}
+
+// Deterministic PII masking for mock/offline mode.
+// Masks 10+ digit phone numbers and consecutive Title-Case word sequences that
+// look like personal names (not clinical terms, product names, or English nouns).
+const CLINICAL_WORDS = new Set([
+  "Doctor","Dr","Patient","Grade","Type","Phase","Stage","Level",
+  "Fitzpatrick","Hamilton","Masi","Spf","Uva","Uvb","Prp","Gfc","Rf",
+  "Minoxidil","Biotin","Retinol","Hydroquinone","Adapalene","Tretinoin",
+  "Azelaic","Niacinamide","Hydrafacial","Microneedling","Laser","Botox",
+  "Filler","Glycolic","Salicylic","Benzoyl","Clindamycin","Doxycycline",
+  "Kaya","Bandra","Mumbai","Delhi","India","Zone",
+  "January","February","March","April","May","June","July","August",
+  "September","October","November","December",
+  "Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday",
+  "Tab","Cap","Cream","Gel","Serum","Lotion","Ointment","Solution","Sachet",
+  "Session","Package","Visit","Clinic","Hospital","Centre","Center",
+]);
+function isClinical(word: string): boolean {
+  const w = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+  return CLINICAL_WORDS.has(w);
+}
+function mockMaskPii(text: string): { masked_transcript: string; pii: { type: string; value: string }[] } {
+  const pii: { type: string; value: string }[] = [];
+  // Mask Indian phone numbers: +91 optional, then 10 digits (possibly spaced/dashed)
+  let out = text.replace(/(\+91[\s-]?)?\b[6-9]\d{9}\b/g, (m) => {
+    pii.push({ type: "phone", value: m });
+    return "[phone]";
+  });
+  // Mask generic 10+ digit sequences
+  out = out.replace(/\b\d{10,}\b/g, (m) => {
+    pii.push({ type: "phone", value: m });
+    return "[phone]";
+  });
+  // Mask 2–4 consecutive Title-Case words that aren't clinical/common nouns
+  out = out.replace(/\b([A-Z][a-z]{1,20})(?:\s+([A-Z][a-z]{1,20})){1,3}\b/g, (match) => {
+    const words = match.trim().split(/\s+/);
+    // Skip if any word looks clinical/geographic
+    if (words.some(isClinical)) return match;
+    // Skip single common English words that happen to be capitalized (start of sentence etc.)
+    if (words.length === 1) return match;
+    pii.push({ type: "person", value: match });
+    return "[person]";
+  });
+  return { masked_transcript: out, pii };
+}
+
+function mockParsePrescription(_voiceText: string): Record<string, any> {
+  // In offline/mock mode return hardcoded hair-loss demo items that match the demo dictation.
+  return {
+    clinical_recommendation: "Maintain consistent application schedule and avoid heat styling for 8 weeks. Use a sulphate-free, scalp-friendly shampoo. Follow up in 6 weeks to assess hair density and scalp health.",
+    items: [
+      { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml · topical", dosage: "Apply 1 ml to scalp twice daily", dosage_detail: "Morning and night; leave on, do not rinse" },
+      { problem: "Hair thinning & follicle support", problem_type: "chronic", product: "Biotin 5000 mcg", product_detail: "30 tablets", dosage: "One tablet daily at bedtime", dosage_detail: "Take with water after dinner" },
+      { problem: "Scalp strengthening", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "10 drops to scalp, massage in", dosage_detail: "Morning only; no rinse required" },
+    ],
+  };
 }
 
 function mockBullets(note: string): { bullets: string[] } {

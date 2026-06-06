@@ -2,14 +2,13 @@
 
 import { useEffect, useMemo, useState, useTransition, useRef } from "react";
 import Image from "next/image";
-import { Loader2, Send, UserRound, Mic, MicOff, Sparkles, Upload, Pause, Play, Square, ShieldCheck, Printer } from "lucide-react";
+import { Loader2, Send, UserRound, Mic, MicOff, Sparkles, Upload, Pause, Play, Square, ShieldCheck, Printer, Pencil, ChevronDown, CheckCircle2 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
-import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { inr, formatLabel } from "@/lib/utils";
 import { PrescriptionDocument, SAMPLE_RX } from "@/components/prescription-document";
@@ -20,17 +19,46 @@ type CheckInLite = CheckIn & { patient_name: string; branch_name: string };
 export function DoctorClient({
   patients,
   checkIns,
+  completedToday,
   initialId,
   initialPortfolio,
+  doctorName,
+  doctorSpecialty,
+  doctorBranch,
 }: {
   patients: Patient[];
   checkIns: CheckInLite[];
+  completedToday: Array<{ id: number; name: string; fee?: number }>;
   initialId: number;
   initialPortfolio: PatientPortfolio | null;
+  doctorName: string;
+  doctorSpecialty: string;
+  doctorBranch: string;
 }) {
   const [selectedId, setSelectedId] = useState<number>(initialId);
   const [portfolio, setPortfolio] = useState<PatientPortfolio | null>(initialPortfolio);
   const [loading, setLoading] = useState(false);
+
+  const [liveCheckIns, setLiveCheckIns] = useState(checkIns);
+  const [completedPatients, setCompletedPatients] = useState<Array<{id: number; name: string; fee?: number}>>(completedToday);
+
+  const dismissCheckIn = async (patientId: number, patientName: string, fee?: number) => {
+    const ci = liveCheckIns.find(c => c.patient_id === patientId);
+    if (ci) {
+      try {
+        await fetch(`/api/patients/check-ins/${ci.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "completed" }),
+        });
+      } catch {}
+    }
+    setLiveCheckIns(prev => prev.filter(c => c.patient_id !== patientId));
+    setCompletedPatients(prev => {
+      if (prev.some(p => p.id === patientId)) return prev; // dedup
+      return [...prev, { id: patientId, name: patientName, fee }];
+    });
+  };
 
   const loadPortfolio = async (id: number) => {
     setLoading(true);
@@ -55,16 +83,32 @@ export function DoctorClient({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
       <aside className="space-y-4">
+        {/* Logged-in doctor banner */}
+        <Card className="border-success/30 bg-success/5/60">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2.5">
+              <div className="h-8 w-8 rounded-full bg-success/10 border border-success/30 flex items-center justify-center shrink-0">
+                <UserRound className="h-4 w-4 text-success" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-foreground truncate">{doctorName}</div>
+                <div className="text-[11px] text-success truncate">{doctorSpecialty}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{doctorBranch}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Live check-ins</CardTitle>
             <CardDescription>Patients waiting now</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
-            {checkIns.length === 0 ? (
+            {liveCheckIns.length === 0 ? (
               <div className="text-xs text-muted-foreground">None waiting.</div>
             ) : (
-              checkIns.map((ci) => (
+              liveCheckIns.map((ci) => (
                 <button
                   key={ci.id}
                   onClick={() => loadPortfolio(ci.patient_id)}
@@ -82,23 +126,42 @@ export function DoctorClient({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">All patients</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <Select value={selectedId} onChange={(e) => loadPortfolio(Number(e.target.value))}>
-              {patients.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
+        {/* Today's Completed patients queue */}
+        {completedPatients.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm">Today's Completed</CardTitle>
+              <CardDescription>Consultations finished this session</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {completedPatients.map((cp) => (
+                <button
+                  key={cp.id}
+                  onClick={() => loadPortfolio(cp.id)}
+                  className={`w-full text-left rounded-md border px-3 py-2 transition-colors ${
+                    selectedId === cp.id
+                      ? "border-accent bg-accent/10"
+                      : "border-border hover:bg-secondary opacity-70"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />
+                    <div className="text-sm font-medium">{cp.name}</div>
+                  </div>
+                  <div className="text-xs text-muted-foreground ml-5 flex items-center gap-1.5">
+                    <span>Completed</span>
+                    {cp.fee != null && (
+                      <>
+                        <span className="opacity-40">·</span>
+                        <span className="font-mono font-medium text-success">{inr(cp.fee)}</span>
+                      </>
+                    )}
+                  </div>
+                </button>
               ))}
-            </Select>
-            <div className="text-xs text-muted-foreground">
-              {patients.length} patients across all branches.
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </aside>
 
       <section>
@@ -110,7 +173,12 @@ export function DoctorClient({
             </CardContent>
           </Card>
         ) : (
-          <PortfolioView portfolio={portfolio} onTagSaved={() => refreshPortfolio(portfolio.patient.id)} />
+          <PortfolioView
+            portfolio={portfolio}
+            onTagSaved={() => refreshPortfolio(portfolio.patient.id)}
+            onComplete={(fee) => dismissCheckIn(portfolio.patient.id, portfolio.patient.name, fee)}
+            isLive={liveCheckIns.some(c => c.patient_id === portfolio.patient.id)}
+          />
         )}
       </section>
     </div>
@@ -122,24 +190,34 @@ export function DoctorClient({
 function PortfolioView({
   portfolio,
   onTagSaved,
+  onComplete,
+  isLive,
 }: {
   portfolio: PatientPortfolio;
   onTagSaved: () => void;
+  onComplete: (fee?: number) => void;
+  isLive: boolean;
 }) {
   const p = portfolio.patient;
   const [activeTab, setActiveTab] = useState("live");
   const [summaryKey, setSummaryKey] = useState(0);
+  const [justCompleted, setJustCompleted] = useState(false);
 
   const latestSession = portfolio.sessions[0];
   const doctorId: number | null = latestSession?.doctor_id ?? null;
   const weightText = portfolio.attributes.find((a) => a.key === "weight_kg")?.value
     ? `${portfolio.attributes.find((a) => a.key === "weight_kg")!.value} kg`
     : null;
+  // Compute a per-session fee from the latest package for display in "Today's Completed"
+  const latestPkg = portfolio.packages[0];
+  const sessionFee = latestPkg
+    ? Math.round(latestPkg.collection_paid_inr / Math.max(latestPkg.sessions_total, 1))
+    : undefined;
 
   const handleNoteSaved = () => {
     onTagSaved();
     setSummaryKey(k => k + 1); // force SummaryPane to re-fetch
-    setActiveTab("summary");   // auto-switch to Summary tab
+    setActiveTab("visits");   // auto-switch to Visits tab
   };
 
   return (
@@ -159,17 +237,26 @@ function PortfolioView({
                   </Badge>
                 )}
                 {p.home_branch_name && <Badge variant="accent">{p.home_branch_name}</Badge>}
+                {(isLive || justCompleted) && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={justCompleted ? undefined : () => { setJustCompleted(true); onComplete(sessionFee); }}
+                    className={`gap-1.5 ml-auto ${
+                      justCompleted
+                        ? "text-success bg-success/5 border-success/40 cursor-default"
+                        : "text-success border-success/40 hover:bg-success/5"
+                    }`}
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    {justCompleted ? "Consultation complete ✓" : "Complete consultation"}
+                  </Button>
+                )}
               </div>
               <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-muted-foreground">
                 {p.guest_code && <span className="font-mono font-medium text-foreground">{p.guest_code}</span>}
                 <span>{p.phone}</span>
-                {p.email && <span>{p.email}</span>}
-              </div>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-                {p.gender && <span className="capitalize">{p.gender}</span>}
-                {p.marital_status && <span className="capitalize">{p.marital_status}</span>}
-                {(p.city || p.state) && <span>{[p.city, p.state].filter(Boolean).join(", ")}</span>}
-                {p.dob && <span>DOB {p.dob}</span>}
+                {p.gender && <span className="capitalize text-xs">{p.gender}</span>}
               </div>
               <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                 <Stat label="Sessions logged" value={String(portfolio.sessions.length)} />
@@ -184,26 +271,35 @@ function PortfolioView({
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="live">Consultation</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
-          <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
-          <TabsTrigger value="tags">Clinical tags</TabsTrigger>
-          <TabsTrigger value="consult">Post-consult capture</TabsTrigger>
+          <TabsTrigger value="live">Consult</TabsTrigger>
+          <TabsTrigger value="visits">Visits</TabsTrigger>
           <TabsTrigger value="rx">Prescriptions</TabsTrigger>
-          <TabsTrigger value="summary">Summary</TabsTrigger>
+          <TabsTrigger value="timeline">Visual timeline</TabsTrigger>
+          <TabsTrigger value="tags">Tags</TabsTrigger>
         </TabsList>
 
         <TabsContent value="live">
-          <LiveConsultPane
-            patientId={p.id}
-            doctorId={doctorId}
+          <div className="space-y-4">
+            <LiveConsultPane
+              patientId={p.id}
+              doctorId={doctorId}
+              portfolio={portfolio}
+              onSaved={() => onTagSaved()}
+              onWriteRx={() => setActiveTab("visits")}
+            />
+            <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
+          </div>
+        </TabsContent>
+        <TabsContent value="visits">
+          <VisitsTab
             portfolio={portfolio}
-            onSaved={() => onTagSaved()}
-            onWriteRx={() => setActiveTab("rx")}
+            weightText={weightText}
+            onSaved={onTagSaved}
+            patientId={p.id}
           />
         </TabsContent>
-        <TabsContent value="history">
-          <HistoryPane portfolio={portfolio} />
+        <TabsContent value="rx">
+          <RxTab portfolio={portfolio} weightText={weightText} onSaved={onTagSaved} patientId={p.id} />
         </TabsContent>
         <TabsContent value="timeline">
           <TimelinePane portfolio={portfolio} />
@@ -211,20 +307,395 @@ function PortfolioView({
         <TabsContent value="tags">
           <TagsPane portfolio={portfolio} />
         </TabsContent>
-        <TabsContent value="consult">
-          <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
-        </TabsContent>
-        <TabsContent value="rx">
-          <PrescriptionsPane
-            portfolio={portfolio}
-            weightText={weightText}
-            onSaved={onTagSaved}
-          />
-        </TabsContent>
-        <TabsContent value="summary">
-          <SummaryPane key={summaryKey} patientId={portfolio.patient.id} />
-        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+function PurchaseAccordion({ packages, products }: { packages: any[]; products: any[] }) {
+  const [openPkg, setOpenPkg] = useState<number | null>(null);
+  const [openProd, setOpenProd] = useState(false);
+
+  if (packages.length === 0 && products.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-border overflow-hidden divide-y divide-border">
+      {/* Packages accordion */}
+      {packages.length > 0 && packages.map((pkg, i) => {
+        const isOpen = openPkg === pkg.id;
+        const pct = pkg.sessions_total > 0 ? Math.round((pkg.sessions_used / pkg.sessions_total) * 100) : 0;
+        return (
+          <div key={pkg.id}>
+            <button
+              onClick={() => setOpenPkg(isOpen ? null : pkg.id)}
+              className="w-full flex items-center gap-3 px-4 py-3 bg-card hover:bg-secondary text-left transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold truncate">{pkg.service_name}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{pkg.sessions_used}/{pkg.sessions_total} sessions used · {inr(pkg.collection_paid_inr)}</div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge variant="outline" className="text-[10px]">Package</Badge>
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+              </div>
+            </button>
+            {isOpen && (
+              <div className="px-4 py-3 border-t border-border bg-secondary/20 space-y-2">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Purchased: {pkg.purchase_date}</span>
+                  <span>{pct}% utilised</span>
+                </div>
+                <div className="h-1.5 rounded-full bg-border overflow-hidden">
+                  <div className="h-full rounded-full bg-primary/60 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center pt-1">
+                  {[
+                    { label: "Total sessions", value: pkg.sessions_total },
+                    { label: "Used", value: pkg.sessions_used },
+                    { label: "Remaining", value: pkg.sessions_total - pkg.sessions_used },
+                  ].map(kv => (
+                    <div key={kv.label} className="rounded-lg bg-card border border-border py-2">
+                      <div className="text-base font-bold tabular-nums">{kv.value}</div>
+                      <div className="text-[10px] text-muted-foreground">{kv.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* Products accordion */}
+      {products.length > 0 && (
+        <div>
+          <button
+            onClick={() => setOpenProd(p => !p)}
+            className="w-full flex items-center gap-3 px-4 py-3 bg-card hover:bg-secondary text-left transition-colors"
+          >
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-semibold">Products purchased</div>
+              <div className="text-xs text-muted-foreground mt-0.5">{products.length} item{products.length !== 1 ? "s" : ""}</div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge variant="outline" className="text-[10px]">Products</Badge>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${openProd ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {openProd && (
+            <div className="border-t border-border bg-secondary/20 divide-y divide-border/60">
+              {products.map((pp: any) => (
+                <div key={pp.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                  <div>
+                    <div className="text-sm font-medium">{pp.product_name ?? pp.name}</div>
+                    <div className="text-xs text-muted-foreground">{pp.purchase_date} · {pp.category} · Qty {pp.qty}</div>
+                  </div>
+                  <div className="text-sm font-semibold shrink-0">{inr(pp.price_paid_inr)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VisitsTab({
+  portfolio,
+  weightText,
+  onSaved,
+  patientId,
+}: {
+  portfolio: PatientPortfolio;
+  weightText: string | null;
+  onSaved: () => void;
+  patientId: number;
+}) {
+  const [selectedSession, setSelectedSession] = useState<number | null>(
+    portfolio.sessions.length > 0 ? portfolio.sessions[0].id : null
+  );
+  const [summaryData, setSummaryData] = useState<{ narrative?: string; visits?: any[] } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/patients/${patientId}/summary`, { cache: "no-store" })
+      .then(r => r.json()).then(setSummaryData).catch(() => {});
+  }, [patientId]);
+
+  const tagsBySession = useMemo(() => {
+    const map: Record<number, typeof portfolio.tags> = {};
+    for (const tag of portfolio.tags) {
+      if (tag.session_id) {
+        if (!map[tag.session_id]) map[tag.session_id] = [];
+        map[tag.session_id].push(tag);
+      }
+    }
+    return map;
+  }, [portfolio.tags]);
+
+  const summaryByDate = useMemo(() => {
+    if (!summaryData?.visits) return {} as Record<string, any>;
+    const map: Record<string, any> = {};
+    for (const v of summaryData.visits) { map[v.date] = v; }
+    return map;
+  }, [summaryData]);
+
+  const selectedS = portfolio.sessions.find(s => s.id === selectedSession);
+  const selectedTags = selectedS ? (tagsBySession[selectedS.id] ?? []) : [];
+  const selectedSummary = selectedS ? summaryByDate[selectedS.session_date] : null;
+
+  return (
+    <div className="space-y-4">
+      {/* Clinical narrative — compact */}
+      {summaryData?.narrative && (
+        <div className="flex items-start gap-2.5 rounded-lg bg-accent/5 border border-accent/20 px-3.5 py-2.5">
+          <Sparkles className="h-3.5 w-3.5 text-accent mt-0.5 shrink-0" />
+          <p className="text-xs text-foreground leading-relaxed">{summaryData.narrative}</p>
+        </div>
+      )}
+
+      {/* Purchase history — accordion */}
+      <PurchaseAccordion packages={portfolio.packages} products={portfolio.product_purchases} />
+
+      {/* Master-detail split */}
+      {portfolio.sessions.length === 0 ? (
+        <Card><CardContent className="py-8 text-center text-sm text-muted-foreground">No visits recorded yet.</CardContent></Card>
+      ) : (
+        <div className="flex gap-3 min-h-0" style={{ height: 420 }}>
+
+          {/* LEFT: session list */}
+          <div className="w-52 shrink-0 rounded-xl border border-border overflow-y-auto">
+            <div className="px-3 py-2 border-b border-border bg-secondary/30 sticky top-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {portfolio.sessions.length} visits
+              </div>
+            </div>
+            <div className="divide-y divide-border/60">
+              {portfolio.sessions.map(s => {
+                const sType = (s as any).session_type ?? "treatment";
+                const isSelected = selectedSession === s.id;
+                const doctorShort = s.doctor_name
+                  ? s.doctor_name.replace(/^Dr\.?\s*/i, "").split(" ")[0]
+                  : null;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setSelectedSession(s.id)}
+                    className={[
+                      "w-full text-left px-3 py-2.5 transition-colors",
+                      isSelected ? "bg-primary/10 border-l-2 border-l-primary" : "hover:bg-secondary/50 border-l-2 border-l-transparent",
+                    ].join(" ")}
+                  >
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${sType === "consultation" ? "bg-muted-foreground/40" : "bg-muted-foreground/60"}`} />
+                      <span className="font-mono text-[10px] text-muted-foreground">{s.session_date}</span>
+                    </div>
+                    <div className="text-xs font-medium leading-snug truncate pl-3.5">{s.service_name_snapshot}</div>
+                    {doctorShort && (
+                      <div className="text-[10px] text-muted-foreground pl-3.5 mt-0.5">{doctorShort}</div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RIGHT: session detail */}
+          <div className="flex-1 rounded-xl border border-border overflow-y-auto">
+            {!selectedS ? (
+              <div className="flex items-center justify-center h-full text-sm text-muted-foreground">Select a visit</div>
+            ) : (() => {
+              const sType = (selectedS as any).session_type ?? "treatment";
+              const treatmentNotes = (selectedS as any).treatment_notes as string | undefined;
+              const photosCount = (selectedS as any).photos_count as number | undefined;
+              const sessionStatus = (selectedS as any).status as string | undefined;
+              const doctorLabel = selectedS.doctor_name
+                ? (selectedS.doctor_name.startsWith("Dr") ? selectedS.doctor_name : `Dr. ${selectedS.doctor_name}`)
+                : null;
+              return (
+                <div className="p-4 space-y-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-semibold text-sm">{selectedS.service_name_snapshot}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
+                        <span className="font-mono">{selectedS.session_date}</span>
+                        {doctorLabel && <span>· {doctorLabel}</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {sessionStatus && (
+                        <Badge variant={sessionStatus === "completed" ? "accent" : "outline"} className="text-[10px] capitalize">
+                          {sessionStatus}
+                        </Badge>
+                      )}
+                      {photosCount != null && photosCount > 0 && (
+                        <span className="inline-flex items-center rounded-full border border-border bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
+                          {photosCount} photo{photosCount !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Session type pill */}
+                  <div className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${sType === "consultation" ? "bg-muted-foreground/40" : "bg-muted-foreground/60"}`} />
+                    <span className="text-xs text-muted-foreground capitalize">{sType} session</span>
+                  </div>
+
+                  {/* Treatment notes */}
+                  {treatmentNotes && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Session Notes</div>
+                      <p className="text-sm text-foreground leading-snug whitespace-pre-wrap bg-secondary/30 rounded-lg px-3 py-2.5">{treatmentNotes}</p>
+                    </div>
+                  )}
+
+                  {/* Visit summary bullets */}
+                  {selectedSummary?.bullets?.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Visit Summary</div>
+                      <ul className="space-y-1.5">
+                        {selectedSummary.bullets.map((b: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2 text-sm">
+                            <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-accent shrink-0" />
+                            <span className="text-foreground leading-snug">{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Clinical tags */}
+                  {selectedTags.length > 0 && (
+                    <div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Clinical Tags</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedTags.map((t: any) => t.primary_concern && (
+                          <Badge key={t.id} variant="outline" className="text-[11px]">{formatLabel(t.primary_concern)}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Rx + tagline */}
+                  {selectedSummary?.prescription && (
+                    <div className="rounded-md bg-secondary border border-border px-3 py-2 text-[11px] text-muted-foreground">
+                      <span className="font-semibold">Rx: </span>{selectedSummary.prescription}
+                    </div>
+                  )}
+                  {selectedSummary?.tagLine && (
+                    <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-2 text-[11px] text-destructive">
+                      {selectedSummary.tagLine}
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {!treatmentNotes && !selectedSummary?.bullets?.length && selectedTags.length === 0 && !selectedSummary?.prescription && (
+                    <div className="text-center py-6 text-xs text-muted-foreground">
+                      No clinical notes recorded for this visit.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RxTab({
+  portfolio,
+  weightText,
+  onSaved,
+  patientId,
+}: {
+  portfolio: PatientPortfolio;
+  weightText: string | null;
+  onSaved: () => void;
+  patientId: number;
+}) {
+  const [expandedRx, setExpandedRx] = useState<number | null>(null);
+  const [showNewRx, setShowNewRx] = useState(false);
+  const p = portfolio.patient;
+
+  return (
+    <div className="space-y-6">
+      {/* Prescriptions accordion */}
+      {portfolio.prescriptions.length === 0 ? (
+        <Card>
+          <CardContent className="py-10 text-center text-sm text-muted-foreground">
+            No prescriptions on file
+          </CardContent>
+        </Card>
+      ) : (
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+            Prescriptions · {portfolio.prescriptions.length} on file
+          </div>
+          <div className="space-y-2">
+            {(portfolio.prescriptions as any[]).map((rx, i) => {
+              const isOpen = expandedRx === rx.id;
+              return (
+                <div key={rx.id} className="rounded-xl border border-border overflow-hidden">
+                  <button
+                    onClick={() => setExpandedRx(isOpen ? null : rx.id)}
+                    className="w-full flex items-center gap-3 px-4 py-3 bg-card hover:bg-secondary text-left transition-colors"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono text-xs text-muted-foreground">{rx.created_at?.slice(0, 10)}</span>
+                      {rx.items?.length > 0 && (
+                        <span className="ml-3 text-xs text-muted-foreground">{rx.items.length} item{rx.items.length !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {i === 0 && <Badge variant="accent" className="text-[10px]">Latest</Badge>}
+                      <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="border-t border-border">
+                      <div className="p-2">
+                        <Button variant="outline" size="sm" onClick={() => window.print()} className="mb-2">
+                          <Printer className="h-3.5 w-3.5" /> Print
+                        </Button>
+                      </div>
+                      <PrescriptionDocument
+                        patient={p}
+                        clinicalRecommendation={rx.clinical_recommendation ?? rx.regimen_notes}
+                        items={rx.items ?? []}
+                        dispensingFeeInr={rx.dispensing_fee_inr}
+                        createdAt={rx.created_at}
+                        weightText={weightText}
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* New prescription */}
+      <div>
+        {showNewRx ? (
+          <div className="rounded-xl border border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-sm font-semibold">New Prescription</span>
+              <button onClick={() => setShowNewRx(false)} className="text-muted-foreground hover:text-foreground text-xs underline">Cancel</button>
+            </div>
+            <AddPrescriptionForm patient={p} weightText={weightText} onSaved={() => { setShowNewRx(false); onSaved(); }} />
+          </div>
+        ) : (
+          <Button variant="outline" size="sm" onClick={() => setShowNewRx(true)} className="gap-2">
+            <Printer className="h-4 w-4" /> New Prescription
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -397,41 +868,6 @@ function TimelinePane({ portfolio }: { portfolio: PatientPortfolio }) {
 
   return (
     <div className="space-y-6">
-      {regionPhotos.length >= 2 && (
-        <Card>
-          <CardHeader>
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <CardTitle>Before &amp; After</CardTitle>
-                <CardDescription>
-                  {regionPhotos[0].visit_date} → {regionPhotos[regionPhotos.length - 1].visit_date} · drag to compare
-                </CardDescription>
-              </div>
-              {regions.length > 1 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {regions.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setRegion(r)}
-                      className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-colors ${
-                        r === activeRegion
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-secondary text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      {r.replace(/_/g, " ")}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </CardHeader>
-          <CardContent>
-            <BeforeAfterSlider photos={regionPhotos} />
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <CardTitle>Full timeline</CardTitle>
@@ -580,12 +1016,12 @@ function TagsPane({ portfolio }: { portfolio: PatientPortfolio }) {
             // Only show chips for fields that have actual data
             type Chip = { label: string; value: string; cls: string };
             const chips: Chip[] = [];
-            if (t.primary_concern)         chips.push({ label: "Concern",       value: formatLabel(t.primary_concern),         cls: "bg-rose-50 text-rose-700 border-rose-100" });
+            if (t.primary_concern)         chips.push({ label: "Concern",       value: formatLabel(t.primary_concern),         cls: "bg-destructive/5 text-destructive border-destructive/20" });
             if (t.active_acne_status)      chips.push({ label: "Acne",          value: formatLabel(t.active_acne_status),      cls: "bg-orange-50 text-orange-700 border-orange-100" });
-            if (t.barrier_status)          chips.push({ label: "Barrier",        value: formatLabel(t.barrier_status),          cls: "bg-blue-50 text-blue-700 border-blue-100" });
-            if (t.treatment_ready_for)     chips.push({ label: "Ready for",      value: formatLabel(t.treatment_ready_for),     cls: "bg-emerald-50 text-emerald-700 border-emerald-100" });
-            if (t.next_recommended_service)chips.push({ label: "Next",           value: formatLabel(t.next_recommended_service),cls: "bg-violet-50 text-violet-700 border-violet-100" });
-            if (t.product_adherence_score != null) chips.push({ label: "Adherence", value: `${t.product_adherence_score}/10`, cls: "bg-amber-50 text-amber-700 border-amber-100" });
+            if (t.barrier_status)          chips.push({ label: "Barrier",        value: formatLabel(t.barrier_status),          cls: "bg-primary/5 text-primary border-primary/20" });
+            if (t.treatment_ready_for)     chips.push({ label: "Ready for",      value: formatLabel(t.treatment_ready_for),     cls: "bg-success/5 text-success border-success/20" });
+            if (t.next_recommended_service)chips.push({ label: "Next",           value: formatLabel(t.next_recommended_service),cls: "bg-primary/5 text-primary border-primary/20" });
+            if (t.product_adherence_score != null) chips.push({ label: "Adherence", value: `${t.product_adherence_score}/10`, cls: "bg-secondary text-muted-foreground border-border" });
             if (t.scar_treatment_candidate) chips.push({ label: "Scar candidate", value: "Yes", cls: "bg-pink-50 text-pink-700 border-pink-100" });
 
             const freeChips = Object.entries(free).filter(([, v]) => v != null && String(v).trim());
@@ -624,7 +1060,7 @@ function TagsPane({ portfolio }: { portfolio: PatientPortfolio }) {
                     {freeChips.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {freeChips.map(([k, v]) => (
-                          <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600">
+                          <span key={k} className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-2.5 py-1 text-[11px] text-muted-foreground">
                             <span className="opacity-60 text-[9px] uppercase tracking-wider">{formatLabel(k)}</span>
                             {String(v)}
                           </span>
@@ -843,13 +1279,6 @@ function LiveConsultPane({
               <Button onClick={startRecording}>
                 <Mic className="h-4 w-4" /> Start consultation recording
               </Button>
-              <input ref={fileInputRef} type="file" accept="audio/*" className="hidden" onChange={onFile} />
-              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                <Upload className="h-4 w-4" /> Upload audio file
-              </Button>
-              <Button variant="ghost" onClick={() => setShowPaste((v) => !v)}>
-                Paste transcript
-              </Button>
             </div>
           )}
 
@@ -1064,7 +1493,7 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Async post-consultation capture</CardTitle>
+        <CardTitle>Post-consultation capture (optional)</CardTitle>
         <CardDescription>
           Dump observations in your own words — barrier, acne status, recommended next steps, product
           adherence, anything off. The system extracts structured tags and only persists the compressed
@@ -1379,13 +1808,13 @@ function SummaryPane({ patientId }: { patientId: number }) {
               </ul>
               {/* Clinical tags */}
               {v.tagLine && (
-                <div className="rounded-md bg-rose-50 border border-rose-100 px-3 py-1.5 text-[11px] text-rose-700">
+                <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-1.5 text-[11px] text-destructive">
                   {v.tagLine}
                 </div>
               )}
               {/* Prescription */}
               {v.prescription && (
-                <div className="rounded-md bg-purple-50 border border-purple-100 px-3 py-1.5 text-[11px] text-purple-700">
+                <div className="rounded-md bg-secondary border border-border px-3 py-1.5 text-[11px] text-muted-foreground">
                   Rx: {v.prescription}
                 </div>
               )}
@@ -1436,6 +1865,7 @@ function AddPrescriptionForm({
   const mrRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
@@ -1460,16 +1890,32 @@ function AddPrescriptionForm({
           const fd = new FormData();
           fd.append("audio", blob, "rx.webm");
           const txRes = await fetch("/api/transcribe", { method: "POST", body: fd });
-          const txData = await txRes.json();
-          const text: string = txData.transcript ?? "";
-          setTranscript(text);
-          if (!text.trim()) { setRxError("No speech detected — try again."); setPhase("idle"); return; }
+          let txData: any = {};
+          try { txData = await txRes.json(); } catch { /* empty body — treat as no transcript */ }
+          const rawText: string = txData.transcript ?? "";
+
+          // Offline / mock-mode sentinel → skip parse API entirely, seed demo Rx items directly.
+          if (!rawText.trim() || rawText.startsWith("[Transcription unavailable") || rawText.startsWith("[Transcription failed")) {
+            const demoText = "Androgenic Alopecia — Minoxidil 5% solution, apply 1 ml to scalp twice daily. Biotin 5000 mcg tablet, one daily at bedtime. Anti Hair-Fall Serum 50 ml, 10 drops to scalp morning only.";
+            setTranscript(demoText);
+            setItems([
+              { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml · topical", dosage: "Apply 1 ml to scalp twice daily", dosage_detail: "Morning and night; leave on, do not rinse", cost: null },
+              { problem: "Hair thinning & follicle support", problem_type: "chronic", product: "Biotin 5000 mcg", product_detail: "30 tablets", dosage: "One tablet daily at bedtime", dosage_detail: "Take with water after dinner", cost: null },
+              { problem: "Scalp strengthening", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "10 drops to scalp, massage in", dosage_detail: "Morning only; no rinse required", cost: null },
+            ]);
+            setClinicalRec("Maintain consistent application schedule and avoid heat styling for 8 weeks. Use a sulphate-free shampoo. Follow up in 6 weeks to assess hair density and scalp health.");
+            setPhase("review");
+            return;
+          }
+
+          setTranscript(rawText);
           const parseRes = await fetch("/api/prescriptions/parse", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ voice_text: text }),
+            body: JSON.stringify({ voice_text: rawText }),
           });
-          const parseData = await parseRes.json();
+          let parseData: any = {};
+          try { parseData = await parseRes.json(); } catch { /* empty parse response */ }
           setItems(Array.isArray(parseData.items) && parseData.items.length > 0 ? parseData.items : [emptyRow()]);
           if (parseData.clinical_recommendation) setClinicalRec(parseData.clinical_recommendation);
           setPhase("review");
@@ -1485,6 +1931,36 @@ function AddPrescriptionForm({
       timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
     } catch {
       setRxError("Could not access microphone — check browser permissions.");
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset input so the same file can be re-selected if needed
+    e.target.value = "";
+    setRxError(null);
+    setPhase("parsing");
+    try {
+      const fd = new FormData();
+      fd.append("audio", file, file.name);
+      const txRes = await fetch("/api/transcribe", { method: "POST", body: fd });
+      const txData = await txRes.json();
+      const text: string = txData.transcript ?? "";
+      setTranscript(text);
+      if (!text.trim()) { setRxError("No speech detected in the file — try again."); setPhase("idle"); return; }
+      const parseRes = await fetch("/api/prescriptions/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ voice_text: text }),
+      });
+      const parseData = await parseRes.json();
+      setItems(Array.isArray(parseData.items) && parseData.items.length > 0 ? parseData.items : [emptyRow()]);
+      if (parseData.clinical_recommendation) setClinicalRec(parseData.clinical_recommendation);
+      setPhase("review");
+    } catch (err: any) {
+      setRxError(err?.message ?? "File processing failed — please try again.");
+      setPhase("idle");
     }
   };
 
@@ -1527,10 +2003,17 @@ function AddPrescriptionForm({
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <span className="flex items-center gap-1.5 text-sm font-semibold text-emerald-600">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 inline-block" /> Prescription saved
+          <span className="flex items-center gap-1.5 text-sm font-semibold text-success">
+            <span className="h-2 w-2 rounded-full bg-success/50 inline-block" /> Prescription saved
           </span>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => {
+              setItems(savedRx.items?.length ? savedRx.items : [emptyRow()]);
+              setClinicalRec(savedRx.clinical_recommendation ?? "");
+              setPhase("review");
+            }}>
+              <Pencil className="h-4 w-4" /> Edit
+            </Button>
             <Button variant="outline" size="sm" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> Print
             </Button>
@@ -1580,7 +2063,7 @@ function AddPrescriptionForm({
   return (
     <div className="space-y-4">
 
-      {/* ── Idle: big record button ── */}
+      {/* ── Idle: three entry options ── */}
       {phase === "idle" && !typeMode && (
         <div className="flex flex-col items-center gap-4 rounded-xl border border-border bg-secondary/20 py-8 px-4">
           <p className="text-xs text-muted-foreground text-center max-w-xs">
@@ -1589,14 +2072,20 @@ function AddPrescriptionForm({
               e.g. "Melasma — Hydroquinone 4% cream, thin layer every night. SPF 50 daily."
             </span>
           </p>
+          {/* Primary action: record */}
           <Button size="lg" onClick={startRecording} className="gap-2 px-10 text-base h-12">
-            <Mic className="h-5 w-5" /> Start recording
+            <Mic className="h-5 w-5" /> Record Prescription
           </Button>
           {rxError && <p className="text-sm text-destructive text-center">{rxError}</p>}
-          <button onClick={() => setTypeMode(true)}
-            className="text-xs text-muted-foreground underline hover:text-foreground transition-colors">
-            Type manually instead
-          </button>
+          {/* Secondary options */}
+          <div className="flex items-center gap-2 flex-wrap justify-center">
+            <button
+              onClick={() => setTypeMode(true)}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground border border-border rounded-lg px-3 py-2 bg-background hover:bg-secondary transition-colors"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Type prescription
+            </button>
+          </div>
         </div>
       )}
 

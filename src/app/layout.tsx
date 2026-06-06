@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar, MobileTopbar } from "@/components/sidebar";
 
 export const metadata: Metadata = {
   title: "KayaOS v3",
@@ -10,17 +9,13 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <div className="min-h-screen flex">
-          <Sidebar />
-          <div className="flex-1 min-w-0 flex flex-col">
-            <MobileTopbar />
-            <main className="flex-1 px-4 md:px-8 py-6 md:py-8 max-w-screen-2xl w-full mx-auto">
-              {children}
-            </main>
-          </div>
-        </div>
-      </body>
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,500;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

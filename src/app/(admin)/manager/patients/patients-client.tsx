@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect } from "react";
-import { Loader2, Search, UserRound, MapPin, MessageSquare, Sparkles, Phone, Calendar, TrendingUp, AlertCircle, Gift } from "lucide-react";
+import { Loader2, Search, UserRound, MapPin, MessageSquare, Sparkles, Phone, Calendar, TrendingUp, AlertCircle, Gift, Users, Activity, Tag } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,27 @@ import { Badge } from "@/components/ui/badge";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { inr } from "@/lib/utils";
 import { PrescriptionDocument } from "@/components/prescription-document";
-import type { Patient, PatientPortfolio, RxRow } from "@/lib/types";
+import { ClinicStatusClient } from "../clinic-status/clinic-status-client";
+import { CatalogClient } from "../catalog/catalog-client";
+import type { Patient, PatientPortfolio, RxRow, ClinicStatus, Service, Product } from "@/lib/types";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export function PatientsClient({ patients }: { patients: Patient[] }) {
+type DoctorLite = { id: number; name: string; specialty: string; branch_id: number; branch_name: string };
+
+export function PatientsClient({
+  patients,
+  clinicStatuses,
+  doctors,
+  catalogProducts,
+  catalogServices,
+}: {
+  patients: Patient[];
+  clinicStatuses: ClinicStatus[];
+  doctors: DoctorLite[];
+  catalogProducts: Product[];
+  catalogServices: Service[];
+}) {
+  const [mainTab, setMainTab] = useState<"patients" | "clinic" | "catalog">("patients");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [portfolio, setPortfolio] = useState<PatientPortfolio | null>(null);
@@ -73,6 +90,37 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
   };
 
   return (
+    <div className="space-y-6">
+      {/* Top-level tab switcher */}
+      <div className="flex gap-1 border-b border-border pb-0">
+        {([
+          { key: "patients", label: "Patients", icon: Users },
+          { key: "clinic", label: "Clinic Status", icon: Activity },
+          { key: "catalog", label: "Catalog", icon: Tag },
+        ] as const).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setMainTab(key)}
+            className={[
+              "inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors -mb-px",
+              mainTab === key
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:border-border",
+            ].join(" ")}
+          >
+            <Icon className="h-4 w-4" />{label}
+          </button>
+        ))}
+      </div>
+
+      {mainTab === "clinic" && (
+        <ClinicStatusClient statuses={clinicStatuses} doctors={doctors} />
+      )}
+      {mainTab === "catalog" && (
+        <CatalogClient initialProducts={catalogProducts} initialServices={catalogServices} />
+      )}
+
+      {mainTab === "patients" && (
     <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
       {/* Sidebar search */}
       <aside>
@@ -272,6 +320,8 @@ export function PatientsClient({ patients }: { patients: Patient[] }) {
           </div>
         )}
       </section>
+    </div>
+    )}
     </div>
   );
 }
@@ -524,12 +574,12 @@ function ManagerSummaryPane({ patientId }: { patientId: number }) {
                 ))}
               </ul>
               {v.tagLine && (
-                <div className="rounded-md bg-rose-50 border border-rose-100 px-3 py-1.5 text-[11px] text-rose-700">
+                <div className="rounded-md bg-destructive/5 border border-destructive/20 px-3 py-1.5 text-[11px] text-destructive">
                   {v.tagLine}
                 </div>
               )}
               {v.prescription && (
-                <div className="rounded-md bg-purple-50 border border-purple-100 px-3 py-1.5 text-[11px] text-purple-700">
+                <div className="rounded-md bg-secondary border border-border px-3 py-1.5 text-[11px] text-muted-foreground">
                   Rx: {v.prescription}
                 </div>
               )}

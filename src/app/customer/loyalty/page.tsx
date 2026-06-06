@@ -99,7 +99,7 @@ const LoyaltyDesktop = () => {
     <div className="frame" style={{ display: 'flex' }}>
       <NavRail active="loyalty" />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <Topbar subtitle="Membership" title="Refer & save together" />
+        <Topbar subtitle="Membership" title="Loyalty & Referrals" />
 
         {/* Hero */}
         <div className="row" style={{ padding: 'var(--pad-4)', gap: 0, borderBottom: '1px solid var(--hair)' }}>

@@ -15,11 +15,11 @@ import type { ConfirmationQueueRow, PendingSessionPatient, ArrivedPatient } from
 import type { CohortRow } from "@/lib/types";
 
 const PIPELINE = [
-  { status: "booked",     label: "Booked",     color: "bg-blue-50 border-blue-200",    dot: "bg-blue-400" },
-  { status: "confirmed",  label: "Confirmed",  color: "bg-emerald-50 border-emerald-200", dot: "bg-emerald-500" },
-  { status: "arrived",    label: "Arrived",    color: "bg-amber-50 border-amber-200",   dot: "bg-amber-500" },
-  { status: "in_session", label: "In Session", color: "bg-violet-50 border-violet-200", dot: "bg-violet-500" },
-  { status: "converted",  label: "Completed",  color: "bg-green-50 border-green-200",   dot: "bg-green-600" },
+  { status: "booked",     label: "Booked",     color: "bg-primary/5 border-primary/30",    dot: "bg-primary/60" },
+  { status: "confirmed",  label: "Confirmed",  color: "bg-success/5 border-success/30", dot: "bg-success/50" },
+  { status: "arrived",    label: "Arrived",    color: "bg-secondary border-border",   dot: "bg-secondary0" },
+  { status: "in_session", label: "In Session", color: "bg-primary/5 border-violet-200", dot: "bg-primary/50" },
+  { status: "converted",  label: "Completed",  color: "bg-green-50 border-green-200",   dot: "bg-success" },
 ];
 
 const SERVICE_OPTIONS = [
@@ -80,16 +80,16 @@ function buildGroups(
       script: "Script: \"Hi [name], calling from Kaya to confirm your [service] appointment at [time] today. Will you be able to make it?\"",
       icon: CalendarCheck2,
       borderCls: "border-blue-300",
-      tileCls: "bg-blue-50 hover:bg-blue-100/80",
+      tileCls: "bg-primary/5 hover:bg-primary/10/80",
       badgeCls: "bg-blue-200 text-blue-800",
-      countCls: "text-blue-700",
+      countCls: "text-primary",
       entries: confirmQueue.map(r => ({
         key: `confirm-${r.id}`,
         name: r.patient_name,
         phone: r.phone,
         branch_name: r.branch_name,
         context: [
-          `${r.service_type} at ${formatTime(r.appointment_ts)}${r.doctor_name ? ` · Dr. ${r.doctor_name}` : ""}`,
+          `${r.service_type} at ${formatTime(r.appointment_ts)}${r.doctor_name ? ` · ${r.doctor_name.startsWith("Dr") ? r.doctor_name : "Dr. " + r.doctor_name}` : ""}`,
           r.pending_sessions > 0
             ? `Has ${r.pending_sessions} unused session${r.pending_sessions > 1 ? "s" : ""} — opportunity to upsell or reschedule`
             : "",
@@ -105,10 +105,10 @@ function buildGroups(
       description: "Treated 2–10 days ago — check skin response",
       script: "Script: \"Hi [name], this is Kaya following up on your recent [service]. How is your skin feeling? Any redness or concerns?\"",
       icon: MessageCircle,
-      borderCls: "border-emerald-300",
-      tileCls: "bg-emerald-50 hover:bg-emerald-100/80",
-      badgeCls: "bg-emerald-200 text-emerald-800",
-      countCls: "text-emerald-700",
+      borderCls: "border-success/40",
+      tileCls: "bg-success/5 hover:bg-success/10/80",
+      badgeCls: "bg-success/20 text-success",
+      countCls: "text-success",
       entries: followUp.map(r => ({
         key: `followup-${r.patient_id}`,
         name: r.patient_name,
@@ -126,9 +126,9 @@ function buildGroups(
       script: "Script: \"Hi [name], you have [N] sessions remaining on your [service] package. Would you like to schedule your next visit this week?\"",
       icon: Phone,
       borderCls: "border-violet-300",
-      tileCls: "bg-violet-50 hover:bg-violet-100/80",
+      tileCls: "bg-primary/5 hover:bg-primary/10/80",
       badgeCls: "bg-violet-200 text-violet-800",
-      countCls: "text-violet-700",
+      countCls: "text-primary",
       entries: pendingPatients.map(p => ({
         key: `queue-${p.id}`,
         name: p.name,
@@ -151,10 +151,10 @@ function buildGroups(
       description: "Active packages, last visit 14–120 days ago",
       script: "Script: \"Hi [name], we noticed you haven't visited in a while — you still have sessions remaining on your [service] package. Want to book a slot this week?\"",
       icon: AlertCircle,
-      borderCls: "border-amber-300",
-      tileCls: "bg-amber-50 hover:bg-amber-100/80",
+      borderCls: "border-border",
+      tileCls: "bg-secondary hover:bg-secondary/80",
       badgeCls: "bg-amber-200 text-amber-800",
-      countCls: "text-amber-700",
+      countCls: "text-muted-foreground",
       entries: missedSession.map(r => ({
         key: `missed-${r.patient_id}`,
         name: r.patient_name,
@@ -345,7 +345,7 @@ function GroupTile({ group, onClick }: { group: Group; onClick: () => void }) {
     >
       <div className="flex items-center justify-between mb-3">
         <Icon className="h-4 w-4 text-muted-foreground" />
-        {!hasPatients && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />}
+        {!hasPatients && <CheckCircle2 className="h-3.5 w-3.5 text-success0" />}
       </div>
       <div className={`text-3xl font-bold tabular-nums mb-1 ${group.countCls}`}>
         {group.entries.length}
@@ -390,15 +390,35 @@ function GroupDetailView({ group, onBack }: { group: Group; onBack: () => void }
       </div>
 
       {/* Call script hint */}
-      <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3">
-        <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 mb-0.5">Call Script</div>
+      <div className="rounded-lg bg-secondary border border-border px-4 py-3">
+        <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-0.5">Call Script</div>
         <p className="text-xs text-amber-800 italic leading-relaxed">{group.script}</p>
       </div>
+
+      {/* When-to-act timing banner */}
+      {(() => {
+        const timingHints: Record<string, string> = {
+          confirmation: "⏰ Call before 10 AM — patients need time to plan their day",
+          followup:     "📞 Best time: 11 AM – 1 PM — 2–10 days post-treatment",
+          call_queue:   "📅 Call between 11 AM – 6 PM — avoid early morning",
+          missed:       "🔔 Re-engage gently — last contact was 14+ days ago",
+          gap:          "💰 High-value patients with unused sessions — prioritise",
+          alpha:        "⭐ Doctor-flagged — high conversion potential",
+          beta:         "⭐ Doctor-flagged — high conversion potential",
+        };
+        const hint = timingHints[group.key];
+        if (!hint) return null;
+        return (
+          <div className="rounded-lg bg-teal-50 border border-teal-200 px-4 py-2.5 flex items-center gap-2">
+            <p className="text-xs text-teal-800 font-medium leading-relaxed">{hint}</p>
+          </div>
+        );
+      })()}
 
       {/* Patient cards */}
       {group.entries.length === 0 ? (
         <div className="rounded-xl border border-border bg-card py-12 text-center text-sm text-muted-foreground">
-          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-emerald-500" />
+          <CheckCircle2 className="h-8 w-8 mx-auto mb-2 text-success0" />
           No patients in this group right now.
         </div>
       ) : (
@@ -416,17 +436,33 @@ function GroupDetailView({ group, onBack }: { group: Group; onBack: () => void }
 
 function PatientCard({ entry }: { entry: PatientEntry }) {
   const [bookOpen, setBookOpen] = useState(false);
+  const [callState, setCallState] = useState<"idle" | "called" | "done">("idle");
+
+  const isTimeMeta = !!entry.meta && /^\d/.test(entry.meta);
 
   return (
-    <div className="rounded-lg border border-border bg-card flex flex-col overflow-hidden">
+    <div className={[
+      "rounded-lg border border-border bg-card flex flex-col overflow-hidden relative",
+      callState === "done" ? "opacity-50 pointer-events-none" : "",
+    ].join(" ")}>
       <div className="p-3 flex-1 space-y-2">
         <div className="flex items-start justify-between gap-2">
           <div>
             <div className="font-semibold text-sm leading-tight">{entry.name}</div>
             <div className="text-[10px] text-muted-foreground">{entry.branch_name}</div>
           </div>
-          {entry.meta && (
-            <span className="text-[10px] bg-secondary text-muted-foreground rounded-full px-2 py-0.5 font-medium shrink-0">
+          {callState === "done" ? (
+            <span className="text-[10px] bg-success/10 text-success rounded-full px-2 py-0.5 font-bold shrink-0 flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
+              Done ✓
+            </span>
+          ) : entry.meta && (
+            <span className={[
+              "rounded-full px-2 py-0.5 shrink-0",
+              isTimeMeta
+                ? "text-[11px] font-mono font-bold bg-secondary/80 text-foreground"
+                : "text-[10px] bg-secondary text-muted-foreground font-medium",
+            ].join(" ")}>
               {entry.meta}
             </span>
           )}
@@ -446,6 +482,7 @@ function PatientCard({ entry }: { entry: PatientEntry }) {
       <div className="border-t border-border/60 px-3 py-2 flex items-center gap-2 bg-secondary/20">
         <a
           href={`tel:${entry.phone}`}
+          onClick={() => { if (callState === "idle") setCallState("called"); }}
           className="flex items-center gap-1.5 rounded-md bg-primary text-primary-foreground px-2.5 py-1.5 text-xs font-semibold hover:bg-primary/90 transition-colors flex-1 justify-center"
         >
           <Phone className="h-3 w-3" />
@@ -468,6 +505,19 @@ function PatientCard({ entry }: { entry: PatientEntry }) {
           </button>
         )}
       </div>
+
+      {/* "Mark as done" — shown after the phone link has been tapped */}
+      {callState === "called" && (
+        <div className="border-t border-border/60 px-3 py-2 bg-success/5">
+          <button
+            onClick={() => setCallState("done")}
+            className="w-full flex items-center justify-center gap-1.5 rounded-md bg-success text-white px-2.5 py-1.5 text-xs font-semibold hover:bg-emerald-700 transition-colors"
+          >
+            <CheckCircle2 className="h-3 w-3" />
+            Mark as done ✓
+          </button>
+        </div>
+      )}
 
       {bookOpen && (
         <QuickBookPanel
@@ -503,7 +553,7 @@ function ConfirmButton({ appointmentId }: { appointmentId: number }) {
 
   if (state === "done") {
     return (
-      <span className="flex items-center gap-1 text-xs text-emerald-700 font-medium px-2 py-1.5 whitespace-nowrap">
+      <span className="flex items-center gap-1 text-xs text-success font-medium px-2 py-1.5 whitespace-nowrap">
         <CheckCircle2 className="h-3 w-3" /> Confirmed
       </span>
     );
@@ -513,7 +563,7 @@ function ConfirmButton({ appointmentId }: { appointmentId: number }) {
     <button
       onClick={confirm}
       disabled={state === "loading"}
-      className="flex items-center gap-1.5 rounded-md bg-emerald-600 text-white px-2.5 py-1.5 text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors whitespace-nowrap"
+      className="flex items-center gap-1.5 rounded-md bg-success text-white px-2.5 py-1.5 text-xs font-semibold hover:bg-emerald-700 disabled:opacity-60 transition-colors whitespace-nowrap"
     >
       {state === "loading"
         ? <Loader2 className="h-3 w-3 animate-spin" />
@@ -591,11 +641,11 @@ function ConflictModal({
 
         {/* Conflict list */}
         <div className="px-5 pt-4 pb-2 space-y-2">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-red-600">
+          <div className="text-[10px] font-bold uppercase tracking-widest text-destructive">
             Conflicting Appointments
           </div>
           {conflicts.map(c => (
-            <div key={c.id} className="rounded-lg border-2 border-red-200 bg-red-50 px-3 py-2.5">
+            <div key={c.id} className="rounded-lg border-2 border-destructive/30 bg-destructive/5 px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-sm text-red-900">{c.service_type}</span>
                 <span className="text-[10px] rounded-full bg-red-200 text-red-900 px-2 py-0.5 font-bold uppercase tracking-wide">
@@ -606,7 +656,7 @@ function ConflictModal({
                 <span className="font-semibold">
                   {c.appointment_ts.replace("T", " ").slice(0, 16)}
                 </span>
-                {c.doctor_name && <span>· Dr. {c.doctor_name}</span>}
+                {c.doctor_name && <span>· {c.doctor_name.startsWith("Dr") ? c.doctor_name : `Dr. ${c.doctor_name}`}</span>}
                 {c.branch_name && <span>· {c.branch_name}</span>}
                 <span>· {c.duration_minutes} min slot</span>
               </div>
@@ -772,8 +822,8 @@ function QuickBookPanel({
 
   if (phase === "done") {
     return (
-      <div className="border-t border-border bg-emerald-50 px-3 py-3 space-y-2">
-        <div className="flex items-center gap-2 text-emerald-700 text-xs font-semibold">
+      <div className="border-t border-border bg-success/5 px-3 py-3 space-y-2">
+        <div className="flex items-center gap-2 text-success text-xs font-semibold">
           <CheckCircle2 className="h-4 w-4" />
           Booked — {service} on {bookedTs.slice(0, 10)} at {bookedTs.slice(11, 16)}
         </div>
@@ -901,10 +951,10 @@ function QuickBookPanel({
                           return (
                             <div
                               key={slotTime}
-                              title={`${occupant.service_type}${occupant.doctor_name ? ` · Dr. ${occupant.doctor_name}` : ""} (${STATUS_LABEL[occupant.status] ?? occupant.status})`}
-                              className="flex-1 rounded-md bg-red-50 border border-red-200 px-1.5 py-1 cursor-not-allowed min-h-[40px] flex flex-col justify-center"
+                              title={`${occupant.service_type}${occupant.doctor_name ? ` · ${occupant.doctor_name.startsWith("Dr") ? occupant.doctor_name : "Dr. " + occupant.doctor_name}` : ""} (${STATUS_LABEL[occupant.status] ?? occupant.status})`}
+                              className="flex-1 rounded-md bg-destructive/5 border border-destructive/30 px-1.5 py-1 cursor-not-allowed min-h-[40px] flex flex-col justify-center"
                             >
-                              <div className="text-[10px] font-semibold text-red-500">{slotTime}</div>
+                              <div className="text-[10px] font-semibold text-destructive">{slotTime}</div>
                               <div className="text-[9px] text-red-400 truncate leading-tight mt-0.5">
                                 {occupant.service_type.split(" ").slice(0, 2).join(" ")}
                               </div>
@@ -943,7 +993,7 @@ function QuickBookPanel({
                           <button
                             key={slotTime}
                             onClick={() => setSelectedTime(slotTime)}
-                            className="flex-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 px-1.5 py-1 min-h-[40px] flex items-center justify-center hover:bg-emerald-100 hover:border-emerald-300 transition-colors group"
+                            className="flex-1 rounded-md bg-success/5 border border-success/30 text-success px-1.5 py-1 min-h-[40px] flex items-center justify-center hover:bg-success/10 hover:border-success/40 transition-colors group"
                           >
                             <span className="text-[10px] font-medium group-hover:font-semibold">{slotTime}</span>
                           </button>
@@ -958,11 +1008,11 @@ function QuickBookPanel({
             {/* Legend — only shown when there are slots to explain */}
             {freeSlotCount > 0 && <div className="flex items-center gap-3 px-3 py-2 bg-secondary/20 border-t border-border/60">
               <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-sm bg-emerald-100 border border-emerald-300 inline-block" />
+                <span className="h-2 w-2 rounded-sm bg-success/10 border border-success/40 inline-block" />
                 Free
               </span>
               <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                <span className="h-2 w-2 rounded-sm bg-red-100 border border-red-300 inline-block" />
+                <span className="h-2 w-2 rounded-sm bg-destructive/10 border border-red-300 inline-block" />
                 Booked
               </span>
               <span className="flex items-center gap-1 text-[9px] text-muted-foreground">
@@ -1051,8 +1101,8 @@ function InClinicSection({ arrivedToday }: { arrivedToday: ArrivedPatient[] }) {
           {arrivedToday.map(p => {
             const isOpen = checkoutId === p.appointment_id;
             const statusDot: Record<string, string> = {
-              arrived: "bg-amber-500",
-              in_session: "bg-violet-500",
+              arrived: "bg-secondary0",
+              in_session: "bg-primary/50",
             };
             const statusLabel: Record<string, string> = {
               arrived: "Arrived",
@@ -1072,7 +1122,7 @@ function InClinicSection({ arrivedToday }: { arrivedToday: ArrivedPatient[] }) {
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5">
                       {statusLabel[p.appt_status] ?? p.appt_status} · {p.appointment_ts.slice(11, 16)}
-                      {p.doctor_name ? ` · Dr. ${p.doctor_name}` : ""}
+                      {p.doctor_name ? ` · ${p.doctor_name.startsWith("Dr") ? p.doctor_name : "Dr. " + p.doctor_name}` : ""}
                       {" · "}{p.branch_name}
                     </div>
                   </div>
@@ -1083,7 +1133,7 @@ function InClinicSection({ arrivedToday }: { arrivedToday: ArrivedPatient[] }) {
                         "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors",
                         isOpen
                           ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border bg-card hover:bg-emerald-50 hover:border-emerald-400 hover:text-emerald-700",
+                          : "border-border bg-card hover:bg-success/5 hover:border-emerald-400 hover:text-success",
                       ].join(" ")}
                     >
                       <ShoppingBag className="h-3.5 w-3.5" />

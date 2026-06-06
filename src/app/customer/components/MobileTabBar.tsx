@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -26,12 +27,10 @@ const IconX       = () => <Ico><path d="M18 6 L6 18 M6 6 L18 18"/></Ico>;
 const IconLogout  = () => <Ico><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></Ico>;
 
 const MORE_ITEMS = [
-  { icon: <IconSum/>,     label: 'Summaries',  path: '/customer/summary' },
-  { icon: <IconRewards/>, label: 'Loyalty',    path: '/customer/loyalty' },
-  { icon: <IconRefer/>,   label: 'Referrals',  path: '/customer/referral' },
-  { icon: <IconPkg/>,     label: 'Products',   path: '/customer/products' },
-  { icon: <IconBlog/>,    label: 'Articles',   path: '/customer/blog' },
-  { icon: <IconVideo/>,   label: 'Videos',     path: '/customer/videos' },
+  { icon: <IconRewards/>, label: 'Loyalty',           path: '/customer/loyalty' },
+  { icon: <IconPkg/>,     label: 'Exclusive Offers',  path: '/customer/products' },
+  { icon: <IconBlog/>,    label: 'Articles',          path: '/customer/blog' },
+  { icon: <IconVideo/>,   label: 'Videos',            path: '/customer/videos' },
 ];
 
 export default function MobileTabBar({ active = 'home' }: { active?: string }) {
@@ -111,18 +110,21 @@ export default function MobileTabBar({ active = 'home' }: { active?: string }) {
 
       {/* Tab bar */}
       <div className="tabbar">
-        <div className={`tab${active === 'home' ? ' active' : ''}`} onClick={() => router.push('/customer/dashboard')} style={{ cursor: 'pointer' }}>
-          <IconHome/><span>Home</span><span className="dot"/>
-        </div>
-        <div className={`tab${active === 'appt' ? ' active' : ''}`} onClick={() => router.push('/customer/sessions')} style={{ cursor: 'pointer' }}>
-          <IconAppt/><span>Visits</span><span className="dot"/>
-        </div>
-        <div className={`tab${active === 'progress' ? ' active' : ''}`} onClick={() => router.push('/customer/before-after')} style={{ cursor: 'pointer' }}>
-          <IconProg/><span>Progress</span><span className="dot"/>
-        </div>
-        <div className={`tab${active === 'ai' ? ' active' : ''}`} onClick={() => router.push('/customer/chatbot')} style={{ cursor: 'pointer' }}>
-          <IconAI/><span>Dr. AI</span><span className="dot"/>
-        </div>
+        <Link href="/customer/dashboard" style={{ textDecoration: 'none', color: 'inherit', display: 'contents' }}>
+          <div className={`tab${active === 'home' ? ' active' : ''}`} style={{ cursor: 'pointer' }}>
+            <IconHome/><span>Home</span><span className="dot"/>
+          </div>
+        </Link>
+        <Link href="/customer/sessions" style={{ textDecoration: 'none', color: 'inherit', display: 'contents' }}>
+          <div className={`tab${active === 'appt' ? ' active' : ''}`} style={{ cursor: 'pointer' }}>
+            <IconAppt/><span>History</span><span className="dot"/>
+          </div>
+        </Link>
+        <Link href="/customer/before-after" style={{ textDecoration: 'none', color: 'inherit', display: 'contents' }}>
+          <div className={`tab${active === 'progress' ? ' active' : ''}`} style={{ cursor: 'pointer' }}>
+            <IconProg/><span>Progress</span><span className="dot"/>
+          </div>
+        </Link>
         <div className={`tab${showMore ? ' active' : ''}`} onClick={() => setShowMore(true)} style={{ cursor: 'pointer' }}>
           <IconMore/><span>More</span><span className="dot"/>
         </div>

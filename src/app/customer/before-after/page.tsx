@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SharedNavRail from '../components/NavRail';
 import MobileTabBar from '../components/MobileTabBar';
@@ -90,97 +90,26 @@ const MobileShell = ({ active = 'progress', children }: any) => {
   );
 };
 
-/* Slider Component */
-const Slider = ({ height = 460 }: any) => {
-  const [pos, setPos] = useState(50);
-  const ref = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
+const BABefore = () => (
+  <div className="photo-ph" style={{
+    width: '100%', height: '100%',
+    background: `
+      radial-gradient(35% 25% at 32% 38%, rgba(140,80,55,0.55) 0%, transparent 70%),
+      radial-gradient(28% 22% at 58% 42%, rgba(130,75,50,0.5) 0%, transparent 70%),
+      radial-gradient(18% 14% at 48% 56%, rgba(120,65,40,0.45) 0%, transparent 70%),
+      radial-gradient(120% 80% at 30% 20%, #f3dcc6 0%, #d8b89a 35%, #b08866 70%, #6a4a32 100%)
+    `,
+  }} />
+);
 
-  const handle = (e: any) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    const x = (e.touches?.[0]?.clientX ?? e.clientX) - r.left;
-    setPos(Math.max(0, Math.min(100, (x / r.width) * 100)));
-  };
-
-  const BABefore = () => (
-    <div className="photo-ph" style={{
-      width: '100%', height: '100%',
-      background: `
-        radial-gradient(35% 25% at 32% 38%, rgba(140,80,55,0.55) 0%, transparent 70%),
-        radial-gradient(28% 22% at 58% 42%, rgba(130,75,50,0.5) 0%, transparent 70%),
-        radial-gradient(18% 14% at 48% 56%, rgba(120,65,40,0.45) 0%, transparent 70%),
-        radial-gradient(120% 80% at 30% 20%, #f3dcc6 0%, #d8b89a 35%, #b08866 70%, #6a4a32 100%)
-      `,
-    }} />
-  );
-
-  const BAAfter = () => (
-    <div className="photo-ph" style={{
-      width: '100%', height: '100%',
-      background: `
-        radial-gradient(120% 80% at 30% 20%, #f6e6d4 0%, #e6c8a8 40%, #c39a72 75%, #7a553a 100%)
-      `,
-    }} />
-  );
-
-  return (
-    <div
-      ref={ref}
-      onPointerDown={(e) => { dragging.current = true; ref.current?.setPointerCapture(e.pointerId); handle(e); }}
-      onPointerMove={(e) => dragging.current && handle(e)}
-      onPointerUp={() => dragging.current = false}
-      style={{
-        position: 'relative',
-        width: '100%',
-        height,
-        overflow: 'hidden',
-        cursor: 'ew-resize',
-        userSelect: 'none',
-        touchAction: 'none',
-        background: 'var(--paper-2)',
-      }}
-    >
-      <BABefore />
-      <div style={{
-        position: 'absolute', inset: 0, width: `${pos}%`, overflow: 'hidden',
-        borderRight: '1px solid var(--paper)',
-      }}>
-        <BAAfter />
-      </div>
-
-      <div style={{ position: 'absolute', top: 14, left: 14 }}>
-        <div className="tag solid">After · May 13</div>
-      </div>
-      <div style={{ position: 'absolute', top: 14, right: 14 }}>
-        <div className="tag" style={{ background: 'var(--paper)' }}>Before · Mar 14</div>
-      </div>
-
-      <div style={{
-        position: 'absolute', top: 0, bottom: 0, left: `${pos}%`,
-        width: 1, background: 'var(--paper)',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.1)',
-      }}>
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: 40, height: 40, borderRadius: '50%',
-          background: 'var(--paper)',
-          border: '1px solid var(--ink)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: 'var(--ink)',
-          cursor: 'ew-resize',
-        }}>
-          <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" strokeWidth="1.4">
-            <path d="M5 3 L1 7 L5 11" />
-            <path d="M13 3 L17 7 L13 11" />
-            <path d="M1 7 H17" />
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-};
+const BAAfter = () => (
+  <div className="photo-ph" style={{
+    width: '100%', height: '100%',
+    background: `
+      radial-gradient(120% 80% at 30% 20%, #f6e6d4 0%, #e6c8a8 40%, #c39a72 75%, #7a553a 100%)
+    `,
+  }} />
+);
 
 const SESSIONS = [
   { wk: 'W01', date: 'Mar 14', pigment: 100, texture: 100 },
@@ -195,8 +124,8 @@ const BeforeAfterDesktop = () => {
       <NavRail active="before-after" />
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <Topbar
-          subtitle="Progress · Phase 2"
-          title="Pigmentation protocol"
+          subtitle="Visual Timeline (Optional)"
+          title="Your skin progress"
           right={<button className="btn"><IconCamera size={14} /> New photo log</button>}
         />
 
@@ -204,9 +133,9 @@ const BeforeAfterDesktop = () => {
           <div style={{ padding: 'var(--pad-4)', borderRight: '1px solid var(--hair)', display: 'flex', flexDirection: 'column' }}>
             <div className="row between" style={{ alignItems: 'flex-end' }}>
               <div>
-                <div className="eyebrow gold dot">Mar 14 → May 13 · 56 days</div>
+                <div className="eyebrow gold dot">Visual Timeline (Optional) · 56 days</div>
                 <div className="display" style={{ fontSize: 32, marginTop: 8 }}>
-                  Skin progress · Phase 2
+                  Your skin progress
                 </div>
               </div>
               <div className="row" style={{ gap: 6 }}>
@@ -216,12 +145,23 @@ const BeforeAfterDesktop = () => {
               </div>
             </div>
 
-            <div style={{ marginTop: 16, border: '1px solid var(--hair-2)' }}>
-              <Slider height={420} />
+            <div style={{ marginTop: 16, border: '1px solid var(--hair-2)', display: 'grid', gridTemplateColumns: '1fr 1fr', height: 420, overflow: 'hidden' }}>
+              <div style={{ position: 'relative', height: '100%' }}>
+                <BAAfter />
+                <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                  <div className="tag solid">After · May 13</div>
+                </div>
+              </div>
+              <div style={{ position: 'relative', height: '100%', borderLeft: '1px solid var(--paper)' }}>
+                <BABefore />
+                <div style={{ position: 'absolute', top: 12, left: 12 }}>
+                  <div className="tag" style={{ background: 'var(--paper)' }}>Before · Mar 14</div>
+                </div>
+              </div>
             </div>
 
             <div className="muted" style={{ fontSize: 11, marginTop: 10, textAlign: 'center', fontFamily: 'var(--mono)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-              ← Drag to compare · Captured under standardised clinic light
+              Captured under standardised clinic light
             </div>
 
             <div className="eyebrow" style={{ marginTop: 22 }}>Photo log · 4 sessions</div>
@@ -279,16 +219,24 @@ const BeforeAfterDesktop = () => {
 const BeforeAfterMobile = () => (
   <MobileShell active="progress">
     <div style={{ padding: '14px 20px 100px', height: '100%', overflow: 'auto' }}>
-      <div className="eyebrow gold dot">Mar 14 → May 13 · 56 days</div>
+      <div className="eyebrow gold dot">Visual Timeline (Optional) · 56 days</div>
       <div className="display" style={{ fontSize: 28, marginTop: 6 }}>
-        Skin progress
+        Your skin progress
       </div>
 
-      <div style={{ marginTop: 16, border: '1px solid var(--hair-2)' }}>
-        <Slider height={320} />
-      </div>
-      <div className="muted" style={{ fontSize: 10, marginTop: 8, textAlign: 'center', fontFamily: 'var(--mono)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        ← Drag to compare
+      <div style={{ marginTop: 16, border: '1px solid var(--hair-2)', display: 'grid', gridTemplateColumns: '1fr 1fr', height: 220, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: '100%' }}>
+          <BAAfter />
+          <div style={{ position: 'absolute', top: 8, left: 8 }}>
+            <div className="tag solid">After · May 13</div>
+          </div>
+        </div>
+        <div style={{ position: 'relative', height: '100%', borderLeft: '1px solid var(--paper)' }}>
+          <BABefore />
+          <div style={{ position: 'absolute', top: 8, left: 8 }}>
+            <div className="tag" style={{ background: 'var(--paper)' }}>Before · Mar 14</div>
+          </div>
+        </div>
       </div>
 
       <div className="row" style={{ marginTop: 18, gap: 6 }}>

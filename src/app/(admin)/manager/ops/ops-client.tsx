@@ -61,18 +61,24 @@ function svcBadgeCls(st: string) {
   return "bg-secondary text-muted-foreground border-border";
 }
 
+// Statuses where the patient is physically at the clinic or has converted — manager action possible.
+const ACTIVE_STATUSES = ["arrived", "in_session", "converted", "rescheduled"];
+
 export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
   const [filter, setFilter] = useState<FilterKey>("all");
 
-  const ongoingCount      = rows.filter(r => getTreatmentStatus(r) === "in_progress").length;
-  const notStartedCount   = rows.filter(r => isPendingTreatment(r) && getTreatmentStatus(r) === "not_started").length;
-  const pendingFnoCount   = rows.filter(isPendingFno).length;
-  const completeCount     = rows.filter(isComplete).length;
+  // Only count rows where the patient has actually arrived — not "booked" / "confirmed"
+  const activeRows = rows.filter(r => ACTIVE_STATUSES.includes(r.appt_status));
+
+  const ongoingCount    = activeRows.filter(r => getTreatmentStatus(r) === "in_progress").length;
+  const notStartedCount = activeRows.filter(r => isPendingTreatment(r) && getTreatmentStatus(r) === "not_started").length;
+  const pendingFnoCount = activeRows.filter(isPendingFno).length;
+  const completeCount   = activeRows.filter(isComplete).length;
 
   const FILTERS: { key: FilterKey; label: string; count: number; color: string; example: string }[] = [
     {
-      key: "all", label: "All", count: rows.length, color: "",
-      example: "All sessions from the last 30 days — arrived, in progress, done, and rescheduled",
+      key: "all", label: "Active sessions", count: activeRows.length, color: "",
+      example: "Patients who have arrived, are in session, or have converted today — actionable rows only",
     },
     {
       key: "ongoing", label: "Ongoing Treatment", count: ongoingCount, color: "text-violet-700",
@@ -94,7 +100,8 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
 
   const activeFilter = FILTERS.find(f => f.key === filter);
 
-  const visible = rows.filter(row => {
+  // Never show rows where the patient hasn't arrived yet (booked/confirmed) — nothing for manager to do.
+  const visible = activeRows.filter(row => {
     if (filter === "ongoing")           return getTreatmentStatus(row) === "in_progress";
     if (filter === "pending_treatment") return isPendingTreatment(row) && getTreatmentStatus(row) === "not_started";
     if (filter === "pending_fno")       return isPendingFno(row);
@@ -187,7 +194,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         <span>{row.appointment_ts.slice(0, 16).replace("T", " ")}</span>
                         <span>·</span>
                         <span>{row.branch_name}</span>
-                        {row.doctor_name && <><span>·</span><span>Dr. {row.doctor_name}</span></>}
+                        {row.doctor_name && <><span>·</span><span>{row.doctor_name.startsWith("Dr") ? row.doctor_name : `Dr. ${row.doctor_name}`}</span></>}
                       </div>
                     </div>
 
@@ -227,10 +234,10 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                         <div className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground flex items-center gap-1">
                           <Package className="h-3 w-3" />Inventory (FnO)
                         </div>
-                        {fStatus === "not_applicable" || tStatus === "not_started" ? (
-                          <div className="text-xs text-muted-foreground">
-                            {fStatus === "not_applicable" ? "Session not yet done" : "Awaiting treatment"}
-                          </div>
+                        {fStatus === "not_applicable" ? (
+                          <div className="text-xs text-muted-foreground">Session not yet done</div>
+                        ) : tStatus === "not_started" && row.appt_status !== "converted" ? (
+                          <div className="text-xs text-muted-foreground">Awaiting treatment</div>
                         ) : fStatus === "complete" ? (
                           <div className="flex items-center gap-1.5 text-sm text-emerald-700 font-medium">
                             <CheckCircle2 className="h-4 w-4" />Submitted
@@ -240,7 +247,8 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-sm text-amber-700 font-medium">
-                            <AlertCircle className="h-3.5 w-3.5" />Pending entry
+                            <AlertCircle className="h-3.5 w-3.5" />
+                            {tStatus === "not_started" ? "Inventory update remaining" : "Pending entry"}
                           </div>
                         )}
                       </div>
@@ -261,7 +269,7 @@ export function OpsClient({ rows }: { rows: TreatmentOpsRow[] }) {
                           )}
                         </div>
                       )}
-                      {(isPendingFno(row) && tStatus === "complete") && (
+                      {(isPendingFno(row) && (tStatus === "complete" || row.appt_status === "converted")) && (
                         <a
                           href={`/manager/fno/${row.appointment_id}`}
                           className="flex items-center gap-1.5 rounded-lg bg-amber-500 text-white px-3 py-2 text-xs font-semibold hover:bg-amber-600 transition-colors whitespace-nowrap"

@@ -57,7 +57,7 @@ export function StaffRoster({
         <select
           value={branchFilter}
           onChange={e => setBranchFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-card px-3 pr-8 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 appearance-none"
+          className="h-9 rounded-md border border-input bg-card px-3 pr-8 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 appearance-none"
         >
           <option value="all">All branches</option>
           {branches.map(b => (
@@ -67,7 +67,7 @@ export function StaffRoster({
         <select
           value={specialtyFilter}
           onChange={e => setSpecialtyFilter(e.target.value)}
-          className="h-9 rounded-md border border-input bg-card px-3 pr-8 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 appearance-none"
+          className="h-9 rounded-md border border-input bg-card px-3 pr-8 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 appearance-none"
         >
           <option value="all">All roles</option>
           {specialties.map(s => (
@@ -79,7 +79,7 @@ export function StaffRoster({
           placeholder="Search doctors…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="h-9 rounded-md border border-input bg-card px-3 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 min-w-[200px]"
+          className="h-9 rounded-md border border-input bg-card px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 min-w-[200px]"
         />
       </div>
       {filtered.length === 0 ? (

@@ -1,4 +1,4 @@
-import { listAllPatients, listLiveCheckIns, getPatientPortfolio, purgeSessionConsultations, purgeSessionPrescriptions } from "@/lib/db";
+import { listAllPatients, listLiveCheckIns, getPatientPortfolio, purgeSessionConsultations, purgeSessionPrescriptions, ensureDemoCheckIns, listAllDoctors, getCompletedToday } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { DoctorClient } from "./doctor-client";
 
@@ -12,9 +12,13 @@ export default function DoctorPage({
   // Clear session recordings/prescriptions on each page load; seeds are preserved.
   purgeSessionConsultations();
   purgeSessionPrescriptions();
+  ensureDemoCheckIns();
+  const doctors = listAllDoctors();
+  const demoDoctor = doctors[0] ?? { name: "Dr. Kavita Sharma", specialty: "Dermatologist", branch_name: "Kaya Bandra 2" };
 
   const patients = listAllPatients();
   const checkIns = listLiveCheckIns();
+  const completedToday = getCompletedToday();
   const initialId =
     Number(searchParams.patient) ||
     checkIns[0]?.patient_id ||
@@ -31,8 +35,12 @@ export default function DoctorPage({
       <DoctorClient
         patients={patients}
         checkIns={checkIns}
+        completedToday={completedToday}
         initialId={initialId}
         initialPortfolio={initialPortfolio}
+        doctorName={demoDoctor.name}
+        doctorSpecialty={demoDoctor.specialty}
+        doctorBranch={demoDoctor.branch_name ?? "Kaya Clinic"}
       />
     </div>
   );

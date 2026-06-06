@@ -14,114 +14,251 @@ const Icon = ({ size = 18, children, stroke = 1.4, style }: any) => (
 );
 
 const G = ({ cx, cy, r = 1.6 }: any) => <circle cx={cx} cy={cy} r={r} fill="var(--gold)" stroke="none" />;
-const IconSearch = (p: any) => <Icon {...p}><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15 L20 20" /></Icon>;
-const IconBell = (p: any) => <Icon {...p}><path d="M6 16 V11 C6 7.5 8.5 5 12 5 C15.5 5 18 7.5 18 11 V16 L19.5 18 H4.5 Z" /><path d="M10 20 C10.5 21 11.2 21.5 12 21.5 C12.8 21.5 13.5 21 14 20" /><G cx={17} cy={7} /></Icon>;
-const IconCart = (p: any) => <Icon {...p}><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" /><path d="M3 6h18" /><path d="M16 10a4 4 0 0 1-8 0" /></Icon>;
-const IconCheck = (p: any) => <Icon {...p}><path d="M4 12 L9.5 17.5 L20 7" /></Icon>;
+const IconSearch   = (p: any) => <Icon {...p}><circle cx="10.5" cy="10.5" r="6" /><path d="M15 15 L20 20" /></Icon>;
+const IconBell     = (p: any) => <Icon {...p}><path d="M6 16 V11 C6 7.5 8.5 5 12 5 C15.5 5 18 7.5 18 11 V16 L19.5 18 H4.5 Z" /><path d="M10 20 C10.5 21 11.2 21.5 12 21.5 C12.8 21.5 13.5 21 14 20" /><G cx={17} cy={7} /></Icon>;
+const IconCalendar = (p: any) => <Icon {...p}><rect x="3.5" y="5" width="17" height="15" rx="1.5" /><path d="M3.5 9.5 H20.5" /><path d="M8 3.5 V6.5 M16 3.5 V6.5" /><G cx={16} cy={14.5} /></Icon>;
+const IconTag      = (p: any) => <Icon {...p}><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></Icon>;
+const IconCopy     = (p: any) => <Icon {...p}><rect x="9" y="9" width="13" height="13" rx="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></Icon>;
+const IconCheck    = (p: any) => <Icon {...p}><path d="M4 12 L9.5 17.5 L20 7" /></Icon>;
+const IconStar     = (p: any) => <Icon {...p}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></Icon>;
 
-const PRODUCTS = [
+/* ---- DATA ---- */
+const SESSION_OFFERS = [
   {
-    id: 1, name: 'Kaya Antox Vit-C Serum', category: 'Serum', price: 895, mrp: 1095,
-    desc: 'Brightening vitamin C + ferulic acid. Fades dark spots, boosts radiance.',
-    size: '30ml', tag: 'Bestseller', color: '#fff8ee', prescribed: true,
+    id: 's1',
+    title: 'HydraFacial',
+    subtitle: 'Deep cleanse · Exfoliation · Hydration infusion',
+    tag: 'Members save 15%',
+    price: '₹2,720',
+    mrp: '₹3,200',
+    duration: '60 min',
+    badge: 'Most booked',
+    color: '#eef6ff',
+    accent: '#2563eb',
   },
   {
-    id: 2, name: 'Kaya Niacinamide 10% Serum', category: 'Serum', price: 645, mrp: 795,
-    desc: 'Pore-minimising, sebum-control. 10% niacinamide + zinc PCA.',
-    size: '30ml', tag: 'Prescribed', color: '#eef4ff', prescribed: true,
+    id: 's2',
+    title: 'Chemical Peel (TCA)',
+    subtitle: 'Hyperpigmentation · Acne scarring · Texture',
+    tag: 'Prescribed for you',
+    price: '₹2,380',
+    mrp: '₹2,800',
+    duration: '45 min',
+    badge: 'Prescribed',
+    color: '#fff8ee',
+    accent: '#b45309',
   },
   {
-    id: 3, name: 'Kaya Daily Shield SPF 50', category: 'Sunscreen', price: 750, mrp: 895,
-    desc: 'Broad-spectrum PA++++ for Indian skin. Invisible finish, no white cast.',
-    size: '50ml', tag: 'Prescribed', color: '#f0faf2', prescribed: true,
+    id: 's3',
+    title: 'Laser Treatment',
+    subtitle: 'Targeted pigment & texture correction',
+    tag: 'Members save 10%',
+    price: '₹4,050',
+    mrp: '₹4,500',
+    duration: '45 min',
+    badge: null,
+    color: '#f5f0ff',
+    accent: '#7c3aed',
   },
   {
-    id: 4, name: 'Kaya Replenishing Night Cream', category: 'Moisturiser', price: 985, mrp: 1195,
-    desc: 'Ceramide barrier repair + peptide complex. Overnight skin restoration.',
-    size: '50g', tag: null, color: '#f5f0ff', prescribed: false,
-  },
-  {
-    id: 5, name: 'Kaya Pore Refine Toner', category: 'Toner', price: 545, mrp: 695,
-    desc: 'BHA-based toner. Unclogs pores, smooths texture, controls shine.',
-    size: '150ml', tag: 'New', color: '#fff0f5', prescribed: false,
-  },
-  {
-    id: 6, name: 'Kaya Hydra Boost Eye Gel', category: 'Eye Care', price: 1195, mrp: 1495,
-    desc: 'Caffeine + hyaluronic acid for dark circles and puffiness.',
-    size: '15ml', tag: null, color: '#f0faff', prescribed: false,
-  },
-  {
-    id: 7, name: 'Kaya Clarifying Face Wash', category: 'Cleanser', price: 395, mrp: 495,
-    desc: 'Salicylic acid + tea tree. Deep pore cleanse without stripping moisture.',
-    size: '100ml', tag: 'Bestseller', color: '#f0fff5', prescribed: false,
-  },
-  {
-    id: 8, name: 'Kaya Barrier Repair Cream', category: 'Moisturiser', price: 850, mrp: 1050,
-    desc: 'Triple ceramide formula for dry, sensitised or post-treatment skin.',
-    size: '50g', tag: null, color: '#fffaf0', prescribed: false,
+    id: 's4',
+    title: 'Acne Clearing Session',
+    subtitle: 'Medical-grade treatment & prevention plan',
+    tag: 'Members save 10%',
+    price: '₹1,620',
+    mrp: '₹1,800',
+    duration: '30 min',
+    badge: null,
+    color: '#f0faf2',
+    accent: '#15803d',
   },
 ];
 
-const CATEGORIES = ['All', 'Serum', 'Sunscreen', 'Moisturiser', 'Toner', 'Cleanser', 'Eye Care'];
+const PRODUCT_OFFERS = [
+  {
+    id: 'p1',
+    name: 'Kaya Antox Vit-C Serum',
+    category: 'Brightening · 30 ml',
+    desc: 'Fades dark spots, boosts radiance. Vitamin C + ferulic acid.',
+    code: 'KAYA-VIT-C18',
+    saving: '18% off at clinic',
+    prescribed: true,
+    color: '#fff8ee',
+  },
+  {
+    id: 'p2',
+    name: 'Kaya Niacinamide 10% Serum',
+    category: 'Pore-minimising · 30 ml',
+    desc: 'Sebum control, pore refinement. 10% niacinamide + zinc PCA.',
+    code: 'KAYA-NIA-15',
+    saving: '15% off at clinic',
+    prescribed: true,
+    color: '#eef4ff',
+  },
+  {
+    id: 'p3',
+    name: 'Kaya Daily Shield SPF 50',
+    category: 'Sunscreen · 50 ml',
+    desc: 'Broad-spectrum PA++++. Invisible finish, no white cast.',
+    code: 'KAYA-SPF-12',
+    saving: '12% off at clinic',
+    prescribed: true,
+    color: '#f0faf2',
+  },
+  {
+    id: 'p4',
+    name: 'Kaya Replenishing Night Cream',
+    category: 'Barrier repair · 50 g',
+    desc: 'Ceramide + peptide complex. Overnight restoration.',
+    code: 'KAYA-NIGHT-10',
+    saving: '10% off at clinic',
+    prescribed: false,
+    color: '#f5f0ff',
+  },
+];
 
-const MobileShell = ({ active = 'home', children }: any) => {
+/* ---- BOOKING MODAL (lightweight) ---- */
+const BookingModal = ({ offer, onClose }: { offer: any; onClose: () => void }) => {
+  const [done, setDone] = useState(false);
   return (
-    <div className="frame" style={{ display: 'flex', flexDirection: 'column' }}>
-      <div className="statusbar">
-        <span>9:41</span>
-        <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
-          <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
-          <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
-          <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0.5" y="0.5" width="13" height="10" rx="2" stroke="currentColor" /><rect x="2" y="2" width="9" height="7" fill="currentColor" /><rect x="14" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor" /></svg>
-        </span>
+    <div
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ background: 'var(--paper)', width: '100%', maxWidth: 420, borderRadius: 'var(--r-4)', boxShadow: '0 24px 60px rgba(0,0,0,0.2)', overflow: 'hidden' }}>
+        <div style={{ padding: '24px 24px 0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          <div>
+            <div className="eyebrow brand dot">Book a session</div>
+            <div style={{ fontSize: 18, fontWeight: 600, marginTop: 6 }}>{offer.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>{offer.subtitle}</div>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--mute)', fontSize: 22, lineHeight: 1, padding: '0 4px', marginTop: -2 }}>×</button>
+        </div>
+
+        {!done ? (
+          <div style={{ padding: 24 }}>
+            <div style={{ background: 'var(--paper-2)', borderRadius: 'var(--r-3)', padding: '14px 16px', marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>{offer.duration}</div>
+                <div className="num" style={{ fontSize: 18, fontWeight: 600, marginTop: 2 }}>{offer.price}</div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, color: 'var(--mute)', textDecoration: 'line-through' }}>{offer.mrp}</div>
+                <div style={{ fontSize: 11, color: 'var(--gold)', fontWeight: 600, marginTop: 2 }}>{offer.tag}</div>
+              </div>
+            </div>
+            <div style={{ fontSize: 13, color: 'var(--mute)', marginBottom: 20, lineHeight: 1.6 }}>
+              Our team will confirm your preferred date and time within 2 hours. Pick up where you left off — your treatment plan is already on file.
+            </div>
+            <button className="btn" style={{ width: '100%' }} onClick={() => setDone(true)}>
+              <IconCalendar size={14} /> Request appointment
+            </button>
+          </div>
+        ) : (
+          <div style={{ padding: '24px 24px 28px', textAlign: 'center' }}>
+            <div style={{ width: 52, height: 52, background: 'var(--brand)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <IconCheck size={22} style={{ color: 'white' }} />
+            </div>
+            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>Request received</div>
+            <div style={{ fontSize: 12, color: 'var(--mute)', lineHeight: 1.7 }}>
+              We'll confirm your {offer.title} appointment<br />shortly via SMS and email.
+            </div>
+            <button className="btn ghost sm" style={{ marginTop: 18 }} onClick={onClose}>Done</button>
+          </div>
+        )}
       </div>
-      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>{children}</div>
-      <MobileTabBar active={active} />
     </div>
   );
 };
 
-const ProductCard = ({ p, onAdd, added }: { p: any; onAdd: () => void; added: boolean }) => (
-  <div className="panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-    <div style={{ height: 90, background: p.color, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-      <div style={{ width: 56, height: 56, borderRadius: 'var(--r-3)', background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <IconCart size={22} style={{ opacity: 0.5 }} />
+/* ---- COUPON CARD ---- */
+const CouponCard = ({ p }: { p: any }) => {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(p.code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <div style={{ border: '1px solid var(--hair)', background: p.color, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div style={{ padding: '14px 16px', flex: 1 }}>
+        {p.prescribed && (
+          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', color: 'var(--brand)', fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 6 }}>Prescribed for you</div>
+        )}
+        <div style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', letterSpacing: '0.05em', textTransform: 'uppercase' }}>{p.category}</div>
+        <div style={{ fontSize: 13, fontWeight: 600, marginTop: 4, lineHeight: 1.3 }}>{p.name}</div>
+        <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 5, lineHeight: 1.5 }}>{p.desc}</div>
       </div>
-      {p.tag && (
-        <span style={{ position: 'absolute', top: 10, left: 10, fontSize: 9, fontWeight: 700, letterSpacing: '0.06em', background: p.tag === 'Prescribed' ? 'var(--brand)' : p.tag === 'Bestseller' ? 'var(--gold)' : 'var(--ink)', color: 'white', padding: '2px 8px', borderRadius: 10 }}>
-          {p.tag}
-        </span>
-      )}
-    </div>
-    <div style={{ padding: '12px 14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-      <div style={{ fontSize: 11, color: 'var(--mute)', fontFamily: 'var(--mono)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{p.category}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3, lineHeight: 1.3 }}>{p.name}</div>
-      <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 5, lineHeight: 1.4, flex: 1 }}>{p.desc}</div>
-      <div style={{ marginTop: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* Coupon strip */}
+      <div style={{ borderTop: '1px dashed var(--hair-2)', margin: '0 12px' }} />
+      <div style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <div>
-          <span className="num" style={{ fontSize: 14, fontWeight: 600 }}>₹{p.price}</span>
-          <span style={{ fontSize: 11, color: 'var(--mute)', textDecoration: 'line-through', marginLeft: 5 }}>₹{p.mrp}</span>
+          <div style={{ fontSize: 9, color: 'var(--mute)', fontFamily: 'var(--mono)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>Clinic code · {p.saving}</div>
+          <div style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, letterSpacing: '0.12em', marginTop: 2, color: 'var(--ink)' }}>{p.code}</div>
         </div>
-        <span style={{ fontSize: 9, color: 'var(--mute)', fontFamily: 'var(--mono)' }}>{p.size}</span>
+        <button
+          onClick={handleCopy}
+          style={{ background: copied ? 'var(--ink)' : 'var(--paper)', border: '1px solid var(--hair-2)', borderRadius: 'var(--r-2)', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600, color: copied ? 'var(--paper)' : 'var(--ink)', transition: 'all 0.15s', flexShrink: 0 }}
+        >
+          {copied ? <><IconCheck size={11} /> Copied</> : <><IconCopy size={11} /> Copy</>}
+        </button>
       </div>
-      <button
-        className={added ? 'btn sm' : 'btn ghost sm'}
-        style={{ marginTop: 10, width: '100%', fontSize: 11 }}
-        onClick={onAdd}
-      >
-        {added ? <><IconCheck size={11} /> Added</> : 'Add to cart'}
-      </button>
+    </div>
+  );
+};
+
+/* ---- SESSION OFFER CARD ---- */
+const SessionCard = ({ s, onBook }: { s: any; onBook: () => void }) => (
+  <div style={{ border: '1px solid var(--hair)', background: s.color, overflow: 'hidden' }}>
+    <div style={{ padding: '16px 18px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {s.badge && (
+            <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.07em', color: s.badge === 'Prescribed' ? 'var(--brand)' : s.accent, fontFamily: 'var(--mono)', textTransform: 'uppercase', marginBottom: 5 }}>{s.badge}</div>
+          )}
+          <div style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{s.title}</div>
+          <div style={{ fontSize: 11, color: 'var(--mute)', marginTop: 3, lineHeight: 1.4 }}>{s.subtitle}</div>
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <div className="num" style={{ fontSize: 16, fontWeight: 600 }}>{s.price}</div>
+          <div style={{ fontSize: 11, color: 'var(--mute)', textDecoration: 'line-through', marginTop: 1 }}>{s.mrp}</div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <span style={{ fontSize: 10, fontFamily: 'var(--mono)', color: 'var(--mute)', letterSpacing: '0.05em' }}>{s.duration}</span>
+          <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--mute)', display: 'inline-block' }} />
+          <span style={{ fontSize: 10, color: s.accent, fontWeight: 600 }}>{s.tag}</span>
+        </div>
+        <button className="btn sm" style={{ fontSize: 11 }} onClick={onBook}>
+          <IconCalendar size={12} /> Book
+        </button>
+      </div>
     </div>
   </div>
 );
 
-const ProductsDesktop = () => {
-  const [cat, setCat] = useState('All');
-  const [cart, setCart] = useState<Set<number>>(new Set());
-  const toggle = (id: number) => setCart(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
+/* ---- MOBILE SHELL ---- */
+const MobileShell = ({ children }: any) => (
+  <div className="frame" style={{ display: 'flex', flexDirection: 'column' }}>
+    <div className="statusbar">
+      <span>9:41</span>
+      <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
+        <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
+        <span style={{ display: 'inline-block', width: 4, height: 4, background: 'currentColor', borderRadius: '50%' }} />
+        <svg width="16" height="11" viewBox="0 0 16 11" fill="none"><rect x="0.5" y="0.5" width="13" height="10" rx="2" stroke="currentColor" /><rect x="2" y="2" width="9" height="7" fill="currentColor" /><rect x="14" y="3.5" width="1.5" height="4" rx="0.5" fill="currentColor" /></svg>
+      </span>
+    </div>
+    <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>{children}</div>
+    <MobileTabBar active="home" />
+  </div>
+);
 
-  const filtered = cat === 'All' ? PRODUCTS : PRODUCTS.filter(p => p.category === cat);
+/* ---- DESKTOP ---- */
+const OffersDesktop = () => {
+  const [booking, setBooking] = useState<any>(null);
+  const [tab, setTab] = useState<'sessions' | 'products'>('sessions');
 
   return (
     <div className="frame" style={{ display: 'flex' }}>
@@ -131,16 +268,10 @@ const ProductsDesktop = () => {
         {/* Topbar */}
         <div className="topbar">
           <div>
-            <div className="eyebrow gold dot">Kaya store</div>
-            <div className="h3" style={{ marginTop: 6 }}>Products</div>
+            <div className="eyebrow gold dot">Member benefits</div>
+            <div className="h3" style={{ marginTop: 6 }}>Exclusive Offers</div>
           </div>
           <div className="row center" style={{ gap: 10 }}>
-            {cart.size > 0 && (
-              <button className="btn sm" style={{ position: 'relative' }}>
-                <IconCart size={14} /> Cart
-                <span style={{ position: 'absolute', top: -6, right: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--brand)', color: 'white', fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>{cart.size}</span>
-              </button>
-            )}
             <button className="btn ghost sm"><IconSearch size={14} /> Search</button>
             <button className="btn ghost sm" style={{ position: 'relative' }}>
               <IconBell size={14} />
@@ -149,123 +280,131 @@ const ProductsDesktop = () => {
           </div>
         </div>
 
-        {/* Category filters */}
-        <div style={{ display: 'flex', gap: 6, padding: '14px var(--pad-4)', borderBottom: '1px solid var(--hair)', flexWrap: 'wrap' }}>
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCat(c)} style={{
-              appearance: 'none', padding: '6px 14px',
-              background: cat === c ? 'var(--ink)' : 'transparent',
-              color: cat === c ? 'var(--paper)' : 'var(--ink)',
-              border: '1px solid ' + (cat === c ? 'var(--ink)' : 'var(--hair-2)'),
+        {/* Tab strip */}
+        <div style={{ display: 'flex', gap: 6, padding: '14px var(--pad-4)', borderBottom: '1px solid var(--hair)' }}>
+          {(['sessions', 'products'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              appearance: 'none', padding: '6px 16px',
+              background: tab === t ? 'var(--ink)' : 'transparent',
+              color: tab === t ? 'var(--paper)' : 'var(--ink)',
+              border: '1px solid ' + (tab === t ? 'var(--ink)' : 'var(--hair-2)'),
               font: '500 11px var(--mono)', letterSpacing: '0.08em', textTransform: 'uppercase', cursor: 'pointer',
-            }}>{c}</button>
+            }}>
+              {t === 'sessions' ? 'Book a session' : 'Products at clinic'}
+            </button>
           ))}
         </div>
 
-        {/* Grid */}
+        {/* Content */}
         <div style={{ flex: 1, overflow: 'auto', padding: 'var(--pad-4)' }}>
-          {/* Prescribed band */}
-          <div className="eyebrow" style={{ marginBottom: 12 }}>
-            Prescribed for you · {PRODUCTS.filter(p => p.prescribed).length} items
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 32 }}>
-            {filtered.filter(p => p.prescribed).map(p => (
-              <ProductCard key={p.id} p={p} onAdd={() => toggle(p.id)} added={cart.has(p.id)} />
-            ))}
-          </div>
-
-          {filtered.filter(p => !p.prescribed).length > 0 && (
+          {tab === 'sessions' && (
             <>
-              <div className="eyebrow" style={{ marginBottom: 12 }}>More from Kaya</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 14, marginBottom: 24 }}>
-                {filtered.filter(p => !p.prescribed).map(p => (
-                  <ProductCard key={p.id} p={p} onAdd={() => toggle(p.id)} added={cart.has(p.id)} />
+              <div className="eyebrow" style={{ marginBottom: 16 }}>Sessions · Member pricing</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 14 }}>
+                {SESSION_OFFERS.map(s => (
+                  <SessionCard key={s.id} s={s} onBook={() => setBooking(s)} />
                 ))}
+              </div>
+              <div style={{ marginTop: 24, padding: '14px 18px', background: 'var(--paper-2)', border: '1px solid var(--hair)', fontSize: 12, color: 'var(--mute)', lineHeight: 1.7 }}>
+                <strong style={{ color: 'var(--ink)' }}>How member pricing works.</strong> As a Kaya member, you get preferential rates on all in-clinic treatments. Prices shown are your member rate — applied automatically when you book through this app. No code needed.
               </div>
             </>
           )}
-
-          <div style={{ textAlign: 'center', padding: '16px 0', borderTop: '1px solid var(--hair)' }}>
-            <a href="https://www.kaya.in/products" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: 'var(--brand)', fontWeight: 500, textDecoration: 'none' }}>
-              Browse full Kaya catalogue →
-            </a>
-          </div>
+          {tab === 'products' && (
+            <>
+              <div className="eyebrow" style={{ marginBottom: 6 }}>Products · Show code at clinic</div>
+              <div style={{ fontSize: 12, color: 'var(--mute)', marginBottom: 18, lineHeight: 1.5 }}>
+                Your doctor-recommended products are available at any Kaya clinic at member price. Show the code below at the dispensary counter when you visit.
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+                {PRODUCT_OFFERS.filter(p => p.prescribed).map(p => <CouponCard key={p.id} p={p} />)}
+              </div>
+              {PRODUCT_OFFERS.filter(p => !p.prescribed).length > 0 && (
+                <>
+                  <div className="eyebrow" style={{ margin: '28px 0 14px' }}>Also recommended</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+                    {PRODUCT_OFFERS.filter(p => !p.prescribed).map(p => <CouponCard key={p.id} p={p} />)}
+                  </div>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
+      {booking && <BookingModal offer={booking} onClose={() => setBooking(null)} />}
     </div>
   );
 };
 
-const ProductsMobile = () => {
-  const [cat, setCat] = useState('All');
-  const [cart, setCart] = useState<Set<number>>(new Set());
-  const toggle = (id: number) => setCart(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; });
-
-  const filtered = cat === 'All' ? PRODUCTS : PRODUCTS.filter(p => p.category === cat);
+/* ---- MOBILE ---- */
+const OffersMobile = () => {
+  const [booking, setBooking] = useState<any>(null);
+  const [tab, setTab] = useState<'sessions' | 'products'>('sessions');
 
   return (
-    <MobileShell active="home">
+    <MobileShell>
+      {booking && <BookingModal offer={booking} onClose={() => setBooking(null)} />}
       <div style={{ height: '100%', overflow: 'auto' }}>
-        <div style={{ padding: '14px 16px 0' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em' }}>Products</div>
-            {cart.size > 0 && (
-              <button className="btn sm" style={{ position: 'relative', fontSize: 11 }}>
-                <IconCart size={13} /> Cart · {cart.size}
-              </button>
-            )}
+        {/* Header */}
+        <div style={{ padding: '16px 20px 0' }}>
+          <div style={{ fontSize: 9, fontFamily: 'var(--mono)', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)', display: 'inline-block' }} /> Member benefits
           </div>
-          <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>Kaya dermatology store</div>
+          <div style={{ fontSize: 22, fontWeight: 600, letterSpacing: '-0.01em' }}>Exclusive Offers</div>
+          <div style={{ fontSize: 12, color: 'var(--mute)', marginTop: 2 }}>Yours as a Kaya member</div>
         </div>
 
-        {/* Category strip */}
-        <div style={{ display: 'flex', overflowX: 'auto', gap: 6, padding: '12px 16px', scrollbarWidth: 'none', borderBottom: '1px solid var(--hair)' }}>
-          {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCat(c)} style={{
-              flexShrink: 0, appearance: 'none', padding: '5px 12px',
-              background: cat === c ? 'var(--ink)' : 'transparent',
-              color: cat === c ? 'var(--paper)' : 'var(--ink)',
-              border: '1px solid ' + (cat === c ? 'var(--ink)' : 'var(--hair-2)'),
+        {/* Tab strip */}
+        <div style={{ display: 'flex', gap: 6, padding: '12px 20px', borderBottom: '1px solid var(--hair)' }}>
+          {(['sessions', 'products'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)} style={{
+              flexShrink: 0, appearance: 'none', padding: '5px 14px',
+              background: tab === t ? 'var(--ink)' : 'transparent',
+              color: tab === t ? 'var(--paper)' : 'var(--ink)',
+              border: '1px solid ' + (tab === t ? 'var(--ink)' : 'var(--hair-2)'),
               font: '500 11px var(--mono)', letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
-            }}>{c}</button>
+            }}>
+              {t === 'sessions' ? 'Sessions' : 'Products'}
+            </button>
           ))}
         </div>
 
-        <div style={{ padding: '14px 16px 100px' }}>
-          <div className="eyebrow" style={{ marginBottom: 10 }}>Prescribed for you</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-            {filtered.filter(p => p.prescribed).map(p => (
-              <ProductCard key={p.id} p={p} onAdd={() => toggle(p.id)} added={cart.has(p.id)} />
-            ))}
-          </div>
-
-          {filtered.filter(p => !p.prescribed).length > 0 && (
+        {/* Content */}
+        <div style={{ padding: '16px 20px 100px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {tab === 'sessions' && (
             <>
-              <div className="eyebrow" style={{ marginBottom: 10 }}>More from Kaya</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
-                {filtered.filter(p => !p.prescribed).map(p => (
-                  <ProductCard key={p.id} p={p} onAdd={() => toggle(p.id)} added={cart.has(p.id)} />
-                ))}
+              <div className="eyebrow" style={{ marginBottom: 4 }}>Book at member price</div>
+              {SESSION_OFFERS.map(s => <SessionCard key={s.id} s={s} onBook={() => setBooking(s)} />)}
+              <div style={{ marginTop: 6, padding: '12px 14px', background: 'var(--paper-2)', border: '1px solid var(--hair)', fontSize: 11, color: 'var(--mute)', lineHeight: 1.7 }}>
+                Member rates applied automatically. No code needed when you book here.
               </div>
             </>
           )}
-
-          <div style={{ textAlign: 'center', paddingTop: 12, borderTop: '1px solid var(--hair)' }}>
-            <a href="https://www.kaya.in/products" target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: 'var(--brand)', fontWeight: 500, textDecoration: 'none' }}>
-              Browse full Kaya catalogue →
-            </a>
-          </div>
+          {tab === 'products' && (
+            <>
+              <div style={{ fontSize: 11, color: 'var(--mute)', lineHeight: 1.6, marginBottom: 4 }}>
+                Show your code at the dispensary counter when you visit any Kaya clinic.
+              </div>
+              {PRODUCT_OFFERS.filter(p => p.prescribed).map(p => <CouponCard key={p.id} p={p} />)}
+              {PRODUCT_OFFERS.filter(p => !p.prescribed).length > 0 && (
+                <>
+                  <div className="eyebrow" style={{ marginTop: 8 }}>Also recommended</div>
+                  {PRODUCT_OFFERS.filter(p => !p.prescribed).map(p => <CouponCard key={p.id} p={p} />)}
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
     </MobileShell>
   );
 };
 
-export default function ProductsPage() {
+export default function OffersPage() {
   return (
     <>
-      <div className="desktop-only"><ProductsDesktop /></div>
-      <div className="mobile-only"><ProductsMobile /></div>
+      <div className="desktop-only"><OffersDesktop /></div>
+      <div className="mobile-only"><OffersMobile /></div>
     </>
   );
 }

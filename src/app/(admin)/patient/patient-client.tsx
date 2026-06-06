@@ -141,7 +141,7 @@ export function PatientClient({
               onClick={() => setActiveSection(id as any)}
               className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all ${
                 activeSection === id
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary"
               }`}
             >
@@ -646,12 +646,12 @@ function PatientSummarySection({ patientId }: { patientId: number }) {
                 ))}
               </ul>
               {v.tagLine && (
-                <div className="rounded-xl bg-rose-50 border border-rose-100 px-3 py-2 text-xs text-rose-700">
+                <div className="rounded-xl bg-destructive/5 border border-destructive/20 px-3 py-2 text-xs text-destructive">
                   {v.tagLine}
                 </div>
               )}
               {v.prescription && (
-                <div className="rounded-xl bg-purple-50 border border-purple-100 px-3 py-2 text-xs text-purple-700">
+                <div className="rounded-xl bg-secondary border border-border px-3 py-2 text-xs text-muted-foreground">
                   <span className="font-semibold">Rx: </span>{v.prescription}
                 </div>
               )}
@@ -698,13 +698,13 @@ function PrescriptionsSection({ portfolio }: { portfolio: PatientPortfolio }) {
             {rx.items?.length > 0 && (
               <div className="space-y-2">
                 {rx.items.map((item: any, i: number) => (
-                  <div key={i} className="rounded-xl bg-purple-50 border border-purple-100 p-3">
+                  <div key={i} className="rounded-xl bg-secondary border border-border p-3">
                     {item.problem && <div className="text-[10px] font-medium uppercase tracking-wide text-purple-400">{item.problem}</div>}
                     <div className="text-sm font-semibold text-purple-900">{item.product ?? item.name}</div>
                     {(item.product_detail || item.duration_days) && (
                       <div className="text-[10px] text-purple-500 mt-0.5">{item.product_detail ?? `${item.duration_days} days`}</div>
                     )}
-                    {(item.dosage || item.instructions) && <div className="text-xs text-purple-700 mt-0.5">{item.dosage ?? item.instructions}</div>}
+                    {(item.dosage || item.instructions) && <div className="text-xs text-muted-foreground mt-0.5">{item.dosage ?? item.instructions}</div>}
                     {item.dosage_detail && <div className="text-[10px] text-purple-500 mt-0.5">{item.dosage_detail}</div>}
                   </div>
                 ))}

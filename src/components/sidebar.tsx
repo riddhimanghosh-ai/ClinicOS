@@ -2,60 +2,60 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X, UserRound, MessageSquare, Search as SearchIcon, BarChart2, CalendarDays, Smartphone, Zap, Brain, FlaskConical } from "lucide-react";
+import {
+  Activity, Stethoscope, Sparkles, LayoutDashboard, Menu, X,
+  UserRound, CalendarDays, Zap, Brain, FlaskConical, Smartphone,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
 const NAV = [
-  { href: "/", label: "Super Admin", icon: LayoutDashboard, role: null },
-  { href: "/manager", label: "Clinic Manager", icon: Activity, role: "Manager", color: "text-blue-600" },
-  { href: "/doctor", label: "Doctor Console", icon: Stethoscope, role: "Doctor", color: "text-emerald-600" },
-  { href: "/customer/login", label: "Customer App", icon: Smartphone, role: "Customer", color: "text-violet-600" },
+  { href: "/",              label: "Super Admin",    icon: LayoutDashboard },
+  { href: "/manager/appointments", label: "Clinic Manager", icon: Activity },
+  { href: "/doctor",        label: "Doctor Console", icon: Stethoscope },
+  { href: "/customer/login",label: "Customer App",   icon: Smartphone },
 ];
 
 const MANAGER_SUBNAV = [
-  { href: "/manager/today",         label: "Daily Ops",          icon: Zap },
-  { href: "/manager/appointments",  label: "Schedule Board",     icon: CalendarDays },
-  { href: "/manager/ops",           label: "Treatment & FnO",    icon: FlaskConical },
-  { href: "/manager",               label: "Cohorts & Outreach", icon: Sparkles },
-  { href: "/manager/patients",      label: "Patients",           icon: UserRound },
-  { href: "/manager/catalog",       label: "Catalog",            icon: SearchIcon },
-  { href: "/manager/clinic-status", label: "Clinic Status",      icon: Activity },
-  { href: "/manager/ai",            label: "Insights",           icon: Brain },
+  { href: "/manager/appointments", label: "Schedule Board",           icon: CalendarDays },
+  { href: "/manager/today",        label: "Daily Ops",                icon: Zap },
+  { href: "/manager/ops",          label: "Treatment & FnO",          icon: FlaskConical },
+  { href: "/manager/patients",     label: "Patients, Catalog & Status", icon: UserRound },
+  { href: "/manager",              label: "Cohorts & Outreach",       icon: Sparkles },
 ];
 
-const ROLE_COLORS: Record<string, string> = {
-  "/manager": "bg-blue-50 border-blue-100",
-  "/doctor":  "bg-emerald-50 border-emerald-100",
-  "/customer": "bg-violet-50 border-violet-100",
-};
-
-const ROLE_BADGE: Record<string, { label: string; cls: string }> = {
-  "/manager": { label: "Manager Portal", cls: "bg-blue-100 text-blue-700" },
-  "/doctor":  { label: "Doctor Portal",  cls: "bg-emerald-100 text-emerald-700" },
-  "/customer": { label: "Customer App",  cls: "bg-violet-100 text-violet-700" },
+const PORTAL_LABEL: Record<string, string> = {
+  "/manager": "Manager Portal",
+  "/doctor":  "Doctor Portal",
+  "/customer":"Customer App",
 };
 
 function NavLinks({ onClick }: { onClick?: () => void }) {
   const pathname = usePathname();
-  const base = "/" + (pathname.split("/")[1] ?? "");
   return (
-    <ul className="space-y-0.5">
-      {NAV.map(({ href, label, icon: Icon, color }) => {
-        const active = href === "/" ? pathname === "/" : href === "/customer/login" ? pathname.startsWith("/customer") : pathname.startsWith(href);
+    <ul className="space-y-px">
+      {NAV.map(({ href, label, icon: Icon }) => {
+        const active =
+          href === "/"
+            ? pathname === "/"
+            : href === "/customer/login"
+            ? pathname.startsWith("/customer")
+            : href === "/manager/appointments"
+            ? pathname.startsWith("/manager")
+            : pathname.startsWith(href);
         return (
           <li key={href}>
             <Link
               href={href}
               onClick={onClick}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors",
                 active
-                  ? "bg-primary text-primary-foreground shadow-sm"
+                  ? "border-l-2 border-primary bg-secondary text-foreground"
                   : "text-muted-foreground hover:bg-secondary hover:text-foreground"
               )}
             >
-              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary-foreground" : color)} />
+              <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
               {label}
             </Link>
           </li>
@@ -68,32 +68,33 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
 export function Sidebar() {
   const pathname = usePathname();
   const base = "/" + (pathname.split("/")[1] ?? "");
-  const roleBadge = ROLE_BADGE[base];
+  const portalLabel = PORTAL_LABEL[base];
 
   return (
-    <aside className="hidden md:flex md:w-64 md:flex-col md:shrink-0 md:border-r md:border-border md:bg-card">
+    <aside className="hidden md:flex md:w-60 md:flex-col md:shrink-0 md:border-r md:border-border md:bg-card">
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 px-5 border-b border-border">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold text-sm shadow-sm">
+      <div className="flex h-14 items-center gap-3 px-5 border-b border-border">
+        <div className="flex h-8 w-8 items-center justify-center border border-foreground bg-foreground text-background font-bold text-sm font-mono">
           K
         </div>
         <div>
-          <div className="text-sm font-bold tracking-tight leading-tight">Kaya OS</div>
-          <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Clinic Intelligence</div>
+          <div className="text-sm font-semibold tracking-tight leading-tight" style={{ fontFamily: "Inter Tight, sans-serif", letterSpacing: "-0.02em" }}>Kaya OS</div>
+          <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-mono">Clinic Intelligence</div>
         </div>
       </div>
 
-      {/* Role badge */}
-      {roleBadge && (
-        <div className={cn("mx-3 mt-3 rounded-lg border px-3 py-2 text-xs font-semibold", roleBadge.cls, ROLE_COLORS[base] ?? "")}>
-          {roleBadge.label}
+      {/* Portal eyebrow */}
+      {portalLabel && (
+        <div className="px-5 py-2.5 border-b border-border">
+          <span className="text-[10px] font-mono uppercase tracking-widest text-primary">{portalLabel}</span>
         </div>
       )}
 
+      {/* Manager subnav */}
       {base === "/manager" && (
-        <nav className="px-3 pt-2 pb-1">
-          <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Manager</div>
-          <ul className="space-y-0.5">
+        <nav className="px-3 pt-3 pb-1 border-b border-border">
+          <div className="mb-1 px-3 text-[10px] font-mono font-medium uppercase tracking-widest text-muted-foreground">Manager</div>
+          <ul className="space-y-px">
             {MANAGER_SUBNAV.map(({ href, label, icon: Icon }) => {
               const active = href === "/manager" ? pathname === "/manager" : pathname.startsWith(href);
               return (
@@ -101,13 +102,13 @@ export function Sidebar() {
                   <Link
                     href={href}
                     className={cn(
-                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
                       active
-                        ? "bg-blue-600 text-white shadow-sm"
-                        : "text-muted-foreground hover:bg-blue-50 hover:text-blue-700"
+                        ? "border-l-2 border-primary bg-secondary text-foreground"
+                        : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                     )}
                   >
-                    <Icon className="h-4 w-4 shrink-0" />
+                    <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
                     {label}
                   </Link>
                 </li>
@@ -117,17 +118,19 @@ export function Sidebar() {
         </nav>
       )}
 
+      {/* Portal nav */}
       <nav className="flex-1 px-3 py-3 overflow-y-auto">
-        <div className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Portals</div>
+        <div className="mb-2 px-3 text-[10px] font-mono font-medium uppercase tracking-widest text-muted-foreground">Portals</div>
         <NavLinks />
       </nav>
 
+      {/* Footer */}
       <div className="px-5 py-4 border-t border-border">
-        <div className="text-xs font-semibold text-foreground">Kaya Skin Clinic</div>
-        <div className="mt-1 text-[10px] text-muted-foreground">Bandra 1 · Bandra 2 · Mumbai Zone</div>
+        <div className="text-xs font-semibold text-foreground tracking-tight">Kaya Skin Clinic</div>
+        <div className="mt-1 text-[10px] text-muted-foreground font-mono">Bandra 1 · Bandra 2 · Mumbai Zone</div>
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
-          <span className="text-[10px] text-muted-foreground">System online</span>
+          <span className="h-1.5 w-1.5 bg-success inline-block" />
+          <span className="text-[10px] text-muted-foreground font-mono">System online</span>
         </div>
       </div>
     </aside>
@@ -138,23 +141,23 @@ export function MobileTopbar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const base = "/" + (pathname.split("/")[1] ?? "");
-  const roleBadge = ROLE_BADGE[base];
+  const portalLabel = PORTAL_LABEL[base];
 
   return (
     <>
-      <div className="md:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card/95 backdrop-blur px-4 shadow-sm">
+      <div className="md:hidden sticky top-0 z-40 flex h-14 items-center justify-between border-b border-border bg-card px-4">
         <Link href="/" className="flex items-center gap-2" onClick={() => setOpen(false)}>
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">K</div>
+          <div className="flex h-8 w-8 items-center justify-center border border-foreground bg-foreground text-background text-xs font-bold font-mono">K</div>
           <div>
-            <span className="text-sm font-bold">Kaya OS</span>
-            {roleBadge && (
-              <span className={cn("ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold", roleBadge.cls)}>{roleBadge.label}</span>
+            <span className="text-sm font-semibold tracking-tight">Kaya OS</span>
+            {portalLabel && (
+              <span className="ml-2 text-[9px] font-mono uppercase tracking-widest text-primary">{portalLabel}</span>
             )}
           </div>
         </Link>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="rounded-md p-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
+          className="p-2 text-muted-foreground hover:text-foreground hover:bg-secondary"
           aria-label="Toggle menu"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -165,17 +168,18 @@ export function MobileTopbar() {
       {open && (
         <div className="md:hidden fixed inset-0 z-30 flex">
           <div className="fixed inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <div className="relative flex w-64 flex-col bg-card border-r border-border shadow-xl">
+          <div className="relative flex w-60 flex-col bg-card border-r border-border">
             <div className="flex h-14 items-center gap-3 px-5 border-b border-border">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold">K</div>
-              <span className="text-sm font-bold">Kaya OS</span>
+              <div className="flex h-8 w-8 items-center justify-center border border-foreground bg-foreground text-background text-xs font-bold font-mono">K</div>
+              <span className="text-sm font-semibold tracking-tight">Kaya OS</span>
             </div>
-            <nav className="flex-1 px-3 py-4">
+            <nav className="flex-1 px-3 py-4 overflow-y-auto">
+              <div className="mb-2 px-3 text-[10px] font-mono font-medium uppercase tracking-widest text-muted-foreground">Portals</div>
               <NavLinks onClick={() => setOpen(false)} />
               {base === "/manager" && (
-                <div className="mt-3">
-                  <div className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Manager</div>
-                  <ul className="space-y-0.5">
+                <div className="mt-3 border-t border-border pt-3">
+                  <div className="mb-1 px-3 text-[10px] font-mono font-medium uppercase tracking-widest text-muted-foreground">Manager</div>
+                  <ul className="space-y-px">
                     {MANAGER_SUBNAV.map(({ href, label, icon: Icon }) => {
                       const active = href === "/manager" ? pathname === "/manager" : pathname.startsWith(href);
                       return (
@@ -184,11 +188,13 @@ export function MobileTopbar() {
                             href={href}
                             onClick={() => setOpen(false)}
                             className={cn(
-                              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all",
-                              active ? "bg-blue-600 text-white" : "text-muted-foreground hover:bg-blue-50"
+                              "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                              active
+                                ? "border-l-2 border-primary bg-secondary text-foreground"
+                                : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                             )}
                           >
-                            <Icon className="h-4 w-4 shrink-0" />
+                            <Icon className={cn("h-4 w-4 shrink-0", active ? "text-primary" : "")} />
                             {label}
                           </Link>
                         </li>
