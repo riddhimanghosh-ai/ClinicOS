@@ -1170,7 +1170,21 @@ function WhoToCallAccordion({ groups }: { groups: Group[] }) {
                   <span className="sm:hidden">Call</span>
                 </a>
                 {entry.action.type === "confirm" ? (
-                  <ConfirmButton appointmentId={entry.action.appointmentId} />
+                  /* Optimistic confirm — removes instantly, API fires in background */
+                  <button
+                    onClick={() => {
+                      setCalledKeys(prev => new Set([...prev, entry.key]));
+                      const apptId = entry.action.type === "confirm" ? entry.action.appointmentId : 0;
+                      fetch(`/api/appointments/${apptId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status: "confirmed" }),
+                      }).catch(() => {});
+                    }}
+                    className="flex items-center gap-1.5 rounded-md bg-success text-white px-3 py-1.5 text-xs font-semibold hover:bg-emerald-700 transition-colors whitespace-nowrap"
+                  >
+                    <CalendarCheck2 className="h-3 w-3" /> Confirm
+                  </button>
                 ) : (
                   <button
                     onClick={() => setCalledKeys(prev => new Set([...prev, entry.key]))}
