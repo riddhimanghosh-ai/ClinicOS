@@ -241,8 +241,13 @@ export function ZoneManagerClient({
               {selMonthData?.sessions_consumed_count ?? 0} sessions consumed
             </div>
           </div>
-          {/* All-time stats */}
-          <StatBox label="Unearned Balance"   value={inr(totalUnearned)} sub="In unused packages" amber />
+          {/* Unearned = collection - net revenue for selected month */}
+          <StatBox
+            label="Unearned Balance"
+            value={inr((selMonthData?.collection_inr ?? 0) - (selMonthData?.net_revenue_inr ?? 0))}
+            sub="collection − net revenue"
+            amber
+          />
           <StatBox label="Total Patients"     value={totalPatients} />
           <StatBox label="Sessions Used"      value={totalUsed} />
           <StatBox label="Sessions Pending"   value={totalPending} amber />
