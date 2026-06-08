@@ -475,36 +475,67 @@ function VisitsTab({
   const lastSession = portfolio.sessions[0] ?? null;
   const totalRemaining = portfolio.packages.reduce((s, p) => s + Math.max(0, p.sessions_total - p.sessions_used), 0);
 
+  // Next appointment — fetched from API
+  const [nextAppt, setNextAppt] = useState<{ appointment_ts: string; service_type: string; doctor_name: string | null } | null | "loading">("loading");
+  useEffect(() => {
+    fetch(`/api/patients/${patientId}/next-appointment`, { cache: "no-store" })
+      .then(r => r.json())
+      .then(d => setNextAppt(d.appointment ?? null))
+      .catch(() => setNextAppt(null));
+  }, [patientId]);
+
   return (
     <div className="space-y-4">
 
-      {/* Last visit + remaining sessions summary bar */}
-      {(lastSession || totalRemaining > 0) && (
-        <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
-          {lastSession && (
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Last visit</span>
-              <span className="font-mono text-xs font-semibold text-foreground">{lastSession.session_date}</span>
-              {lastSession.service_name_snapshot && (
-                <span className="text-xs text-muted-foreground truncate">· {lastSession.service_name_snapshot}</span>
-              )}
-              {lastSession.doctor_name && (
-                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                  · {lastSession.doctor_name.startsWith("Dr") ? lastSession.doctor_name : `Dr. ${lastSession.doctor_name}`}
-                </span>
-              )}
-            </div>
-          )}
-          {lastSession && totalRemaining > 0 && <span className="text-border">|</span>}
-          {totalRemaining > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Remaining</span>
-              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-bold">{totalRemaining} session{totalRemaining !== 1 ? "s" : ""}</span>
-              <span className="text-xs text-muted-foreground">across packages</span>
-            </div>
-          )}
+      {/* Last visit + next session summary bar */}
+      {lastSession && (
+        <div className="flex flex-wrap items-center gap-6 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm divide-x divide-border">
+          {/* Last visit */}
+          <div className="flex items-center gap-2 min-w-0 pr-6">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Last visit</span>
+            <span className="font-mono text-xs font-semibold text-foreground">{lastSession.session_date}</span>
+            {lastSession.service_name_snapshot && (
+              <span className="text-xs text-muted-foreground truncate">· {lastSession.service_name_snapshot}</span>
+            )}
+            {lastSession.doctor_name && (
+              <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                · {lastSession.doctor_name.startsWith("Dr") ? lastSession.doctor_name : `Dr. ${lastSession.doctor_name}`}
+              </span>
+            )}
+          </div>
+          {/* Next session */}
+          <div className="flex items-center gap-2 pl-6 min-w-0">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shrink-0">Next session</span>
+            {nextAppt === "loading" ? (
+              <span className="text-xs text-muted-foreground">—</span>
+            ) : nextAppt ? (
+              <>
+                <span className="font-mono text-xs font-semibold text-foreground">{nextAppt.appointment_ts.slice(0, 10)}</span>
+                <span className="text-xs text-muted-foreground truncate">· {nextAppt.service_type}</span>
+                {nextAppt.doctor_name && (
+                  <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                    · {nextAppt.doctor_name.startsWith("Dr") ? nextAppt.doctor_name : `Dr. ${nextAppt.doctor_name}`}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">N/A</span>
+            )}
+          </div>
         </div>
       )}
+
+      {/* Remaining sessions below */}
+      {totalRemaining > 0 && (
+        <div className="flex items-center gap-4 rounded-xl border border-border bg-secondary/30 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Remaining</span>
+            <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-bold">{totalRemaining} session{totalRemaining !== 1 ? "s" : ""}</span>
+            <span className="text-xs text-muted-foreground">across packages</span>
+          </div>
+        </div>
+      )}
+
 
       {/* Purchase history — accordion */}
       <PurchaseAccordion packages={portfolio.packages} products={portfolio.product_purchases} />

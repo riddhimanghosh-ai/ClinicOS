@@ -1,5 +1,5 @@
 import { recentMessages, queueSummary } from "@/lib/messaging";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { WhatsAppClient } from "./whatsapp-client";
 
 export const dynamic = "force-dynamic";

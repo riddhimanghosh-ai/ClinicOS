@@ -1,5 +1,5 @@
 import { getTreatmentOps } from "@/lib/db";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { OpsClient } from "./ops-client";
 
 export const dynamic = "force-dynamic";

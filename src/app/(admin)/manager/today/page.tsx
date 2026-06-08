@@ -1,6 +1,6 @@
 import { getTodayConfirmationQueue, getPendingSessionPatients, getAppointments, listArrivedToday, ArrivedPatient } from "@/lib/db";
 import { recipeFollowUp, recipeMissedSession, recipeGapCloser, recipeAlpha, recipeBeta } from "@/lib/cohorts";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { TodayClient } from "./today-client";
 
 export const dynamic = "force-dynamic";

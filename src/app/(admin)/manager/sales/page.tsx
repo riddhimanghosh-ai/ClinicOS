@@ -1,5 +1,5 @@
 import { getSalesRecords } from "@/lib/db";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { SalesClient } from "./sales-client";
 
 export const dynamic = "force-dynamic";

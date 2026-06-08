@@ -2,7 +2,7 @@ import { clinicFinancialSummary, db, getMonthlyRevenue, listSavedCohorts } from 
 import type { SavedCohort } from "@/lib/db";
 import { recipeAlpha, recipeBeta, recipeGapCloser, recipeInactiveUsers, recipeMissedSession, recipeFollowUp, RECIPES } from "@/lib/cohorts";
 
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { MetricCard } from "@/components/metric-card";
 import { ManagerClient } from "./manager-client";
 import { inr, pct, todayISO } from "@/lib/utils";

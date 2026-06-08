@@ -1980,3 +1980,16 @@ export function getTreatmentOps(lookbackDays = 30): TreatmentOpsRow[] {
     ORDER BY a.appointment_ts DESC
   `).all(lookbackDays) as TreatmentOpsRow[];
 }
+
+export function getNextAppointment(patientId: number): { appointment_ts: string; service_type: string; doctor_name: string | null } | null {
+  return db().prepare(`
+    SELECT a.appointment_ts, a.service_type, d.name AS doctor_name
+    FROM appointments a
+    LEFT JOIN doctors d ON d.id = a.doctor_id
+    WHERE a.patient_id = ?
+      AND date(a.appointment_ts) > date('now')
+      AND a.status NOT IN ('no_show', 'converted', 'done', 'rescheduled')
+    ORDER BY a.appointment_ts ASC
+    LIMIT 1
+  `).get(patientId) as { appointment_ts: string; service_type: string; doctor_name: string | null } | null;
+}

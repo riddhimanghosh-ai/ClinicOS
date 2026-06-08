@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, TrendingUp, AlertCircle, Users, Calendar, ArrowRight, Clock, Target } from "lucide-react";

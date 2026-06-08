@@ -1,5 +1,5 @@
 import { listAllPatients } from "@/lib/db";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { PatientsClient } from "./patients-client";
 
 export const dynamic = "force-dynamic";

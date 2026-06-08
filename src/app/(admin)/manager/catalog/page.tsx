@@ -1,5 +1,5 @@
 import { getAllCatalog } from "@/lib/db";
-import { PageHeader } from "@/components/page-header";
+import { ManagerPageHeader as PageHeader } from "@/components/manager-page-header";
 import { CatalogClient } from "./catalog-client";
 
 export const dynamic = "force-dynamic";
