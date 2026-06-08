@@ -71,7 +71,8 @@ const PRESCRIPTIONS = [
     items: [
       { problem: 'Post-inflammatory hyperpigmentation', type: 'Chronic', product: 'Kaya Niacinamide 10% Serum', detail: '30ml', dosage: '2–3 drops', dosageDetail: 'AM + PM · mix with moisturiser', cost: 750 },
       { problem: 'Active acne', type: 'Acute', product: 'Kaya Clarifying Face Wash', detail: '100ml', dosage: 'Twice daily', dosageDetail: 'AM + PM · gentle lather, rinse cool', cost: 450 },
-      { problem: 'Sun protection (mandatory)', type: null, product: 'Kaya Daily Shield SPF 50 PA++++', detail: '50ml', dosage: 'Generous application', dosageDetail: 'AM · every morning without fail', cost: 950 },
+      { problem: 'Sun protection', type: null, product: 'Kaya Daily Shield SPF 50 PA++++', detail: '50ml', dosage: 'Generous application', dosageDetail: 'AM · every morning without fail', cost: 950 },
+      { problem: 'Skin renewal', type: null, product: 'Chemical Peel Session', detail: 'In-clinic procedure', dosage: '1 session every 3–4 weeks', dosageDetail: 'Follow post-peel care instructions', cost: 2800 },
     ],
   },
 ];
