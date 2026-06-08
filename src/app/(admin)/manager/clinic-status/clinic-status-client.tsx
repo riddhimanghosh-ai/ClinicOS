@@ -1,144 +1,158 @@
 "use client";
 
 import { useState } from "react";
-import {
-  ChevronLeft,
-  ChevronRight,
-  Trash2,
-  Plus,
-  CalendarDays,
-  Stethoscope,
-} from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, Trash2, Plus, CalendarDays, Stethoscope, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import type { ClinicStatus, ClinicAppliance } from "@/lib/types";
+import type { ClinicStatus } from "@/lib/types";
 
 type DoctorLite = { id: number; name: string; specialty: string; branch_id: number; branch_name: string };
+type DoctorBlock  = { id: string; doctorId: number; date: string; startTime: string; endTime: string; reason: string };
+type ApplianceBlock = { id: string; applianceId: string; startDate: string; endDate: string; reason: string };
 
-type DoctorBlock = {
-  id: string;
-  doctorId: number;
-  date: string;       // YYYY-MM-DD
-  startTime: string;  // HH:MM
-  endTime: string;    // HH:MM
-  reason: string;
-};
+// ── helpers ──────────────────────────────────────────────────────────────────
 
-type ApplianceBlock = {
-  id: string;
-  applianceId: string;
-  startDate: string; // YYYY-MM-DD
-  endDate: string;   // YYYY-MM-DD
-  reason: string;
-};
+function toYMD(d: Date) { return d.toISOString().slice(0, 10); }
+function addDays(d: Date, n: number) { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
+function isoToLocal(ymd: string) { const [y,m,day] = ymd.split("-").map(Number); return new Date(y, m-1, day); }
+function uid() { return Math.random().toString(36).slice(2, 9); }
 
-// ---- helpers ----------------------------------------------------------------
-
-function toYMD(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-function isoToLocal(ymd: string): Date {
-  const [y, m, day] = ymd.split("-").map(Number);
-  return new Date(y, m - 1, day);
-}
-
-/** All calendar days for a month grid (fills to full 6-week grid) */
 function calendarDays(year: number, month: number): Date[] {
   const first = new Date(year, month, 1);
-  const last = new Date(year, month + 1, 0);
+  const last  = new Date(year, month + 1, 0);
   const days: Date[] = [];
-  // pad before
   for (let i = first.getDay(); i > 0; i--) days.push(addDays(first, -i));
-  // month days
   for (let d = 1; d <= last.getDate(); d++) days.push(new Date(year, month, d));
-  // pad after to complete last week
   while (days.length % 7 !== 0) days.push(addDays(last, days.length - (last.getDate() + first.getDay())));
   return days;
 }
 
-const MONTHS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December",
-];
-const DAYS_SHORT = ["Su","Mo","Tu","We","Th","Fr","Sa"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
 
-function uid() {
-  return Math.random().toString(36).slice(2, 9);
+// ── Seed data ────────────────────────────────────────────────────────────────
+
+function seedDoctorBlocks(doctors: DoctorLite[]): DoctorBlock[] {
+  if (!doctors.length) return [];
+  const d = (n: number) => toYMD(addDays(new Date(), n));
+  return [
+    { i: 0, date: d(2),  start: "14:00", end: "18:00", reason: "CME Conference" },
+    { i: 0, date: d(9),  start: "09:00", end: "13:00", reason: "Half-day leave" },
+    { i: 1, date: d(4),  start: "09:00", end: "17:00", reason: "Annual leave" },
+    { i: 1, date: d(5),  start: "09:00", end: "17:00", reason: "Annual leave" },
+    { i: 2, date: d(7),  start: "13:00", end: "17:00", reason: "External clinic duty" },
+    { i: 0, date: d(14), start: "09:00", end: "17:00", reason: "Workshop — laser certification" },
+  ]
+    .filter(s => s.i < doctors.length)
+    .map(s => ({ id: uid(), doctorId: doctors[s.i].id, date: s.date, startTime: s.start, endTime: s.end, reason: s.reason }));
 }
 
-// ---- mini calendar ----------------------------------------------------------
+function seedApplianceBlocks(appliances: Array<{ id: string; name: string }>): ApplianceBlock[] {
+  if (!appliances.length) return [];
+  const d = (n: number) => toYMD(addDays(new Date(), n));
+  return [
+    { i: 0, start: d(1),  end: d(2),  reason: "Scheduled maintenance" },
+    { i: 1, start: d(5),  end: d(5),  reason: "Filter replacement" },
+    { i: 2, start: d(3),  end: d(3),  reason: "Deep clean & calibration" },
+    { i: 0, start: d(15), end: d(16), reason: "Annual servicing" },
+    { i: 3, start: d(8),  end: d(10), reason: "Under repair — cooling unit" },
+  ]
+    .filter(s => s.i < appliances.length)
+    .map(s => ({ id: uid(), applianceId: appliances[s.i].id, startDate: s.start, endDate: s.end, reason: s.reason }));
+}
 
-function MiniCalendar({
-  year,
-  month,
-  onNav,
-  dayContent,
+function collectAppliances(statuses: ClinicStatus[]): Array<{ id: string; name: string }> {
+  const seen = new Set<string>();
+  const result: Array<{ id: string; name: string }> = [];
+  for (const s of statuses)
+    for (const a of s.appliances)
+      if (a.name && !seen.has(a.name.toLowerCase())) {
+        seen.add(a.name.toLowerCase());
+        result.push({ id: a.name.toLowerCase().replace(/\s+/g, "-"), name: a.name });
+      }
+  if (!result.length)
+    for (const n of ["Laser Machine", "IPL Device", "Hydrafacial Unit", "Consultation Room A"])
+      result.push({ id: n.toLowerCase().replace(/\s+/g, "-"), name: n });
+  return result;
+}
+
+// ── Colors ───────────────────────────────────────────────────────────────────
+
+const DOC_COLORS = [
+  { bg: "bg-blue-500",   soft: "bg-blue-50 text-blue-700 border-blue-200",   dot: "bg-blue-500" },
+  { bg: "bg-violet-500", soft: "bg-violet-50 text-violet-700 border-violet-200", dot: "bg-violet-500" },
+  { bg: "bg-emerald-500",soft: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+  { bg: "bg-rose-500",   soft: "bg-rose-50 text-rose-700 border-rose-200",   dot: "bg-rose-500" },
+  { bg: "bg-amber-500",  soft: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+];
+
+const APP_COLORS = [
+  { bg: "bg-amber-500",  soft: "bg-amber-50 text-amber-700 border-amber-200" },
+  { bg: "bg-red-500",    soft: "bg-red-50 text-red-700 border-red-200" },
+  { bg: "bg-blue-500",   soft: "bg-blue-50 text-blue-700 border-blue-200" },
+  { bg: "bg-violet-500", soft: "bg-violet-50 text-violet-700 border-violet-200" },
+  { bg: "bg-teal-500",   soft: "bg-teal-50 text-teal-700 border-teal-200" },
+];
+
+// ── Calendar component ────────────────────────────────────────────────────────
+
+function Calendar({
+  year, month, onNav, dayContent, onDayClick,
 }: {
   year: number;
   month: number;
-  onNav: (delta: -1 | 1) => void;
+  onNav: (d: -1 | 1) => void;
   dayContent: (d: Date) => React.ReactNode;
+  onDayClick?: (ymd: string) => void;
 }) {
-  const days = calendarDays(year, month);
+  const days  = calendarDays(year, month);
   const today = toYMD(new Date());
 
   return (
     <div>
-      {/* header */}
-      <div className="flex items-center justify-between mb-3">
-        <button
-          type="button"
-          onClick={() => onNav(-1)}
-          className="p-1 hover:bg-secondary rounded"
-        >
+      {/* Month nav */}
+      <div className="flex items-center justify-between mb-4">
+        <button type="button" onClick={() => onNav(-1)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border hover:bg-secondary transition-colors">
           <ChevronLeft className="h-4 w-4" />
         </button>
-        <span className="text-sm font-semibold">
-          {MONTHS[month]} {year}
-        </span>
-        <button
-          type="button"
-          onClick={() => onNav(1)}
-          className="p-1 hover:bg-secondary rounded"
-        >
+        <span className="text-base font-semibold">{MONTHS[month]} {year}</span>
+        <button type="button" onClick={() => onNav(1)} className="h-8 w-8 flex items-center justify-center rounded-lg border border-border hover:bg-secondary transition-colors">
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>
-      {/* day-of-week labels */}
+
+      {/* Day headers */}
       <div className="grid grid-cols-7 mb-1">
-        {DAYS_SHORT.map((d) => (
-          <div key={d} className="text-center text-[10px] font-mono uppercase text-muted-foreground py-1">
+        {DAYS.map(d => (
+          <div key={d} className="text-center text-[10px] font-semibold uppercase tracking-widest text-muted-foreground py-1.5">
             {d}
           </div>
         ))}
       </div>
-      {/* day cells */}
-      <div className="grid grid-cols-7 gap-px">
+
+      {/* Day cells */}
+      <div className="grid grid-cols-7 gap-px bg-border rounded-xl overflow-hidden border border-border">
         {days.map((d, i) => {
           const ymd = toYMD(d);
           const inMonth = d.getMonth() === month;
           const isToday = ymd === today;
+          const isWeekend = d.getDay() === 0 || d.getDay() === 6;
           return (
             <div
               key={i}
-              className={`min-h-[56px] border border-border p-1 text-xs ${
-                inMonth ? "bg-card" : "bg-secondary/40"
-              } ${isToday ? "ring-1 ring-primary ring-inset" : ""}`}
+              onClick={() => inMonth && onDayClick?.(ymd)}
+              className={[
+                "min-h-[80px] p-1.5 text-xs transition-colors",
+                inMonth ? (onDayClick ? "cursor-pointer hover:bg-primary/5" : "cursor-default") : "cursor-default",
+                !inMonth ? "bg-secondary/30" : isWeekend ? "bg-secondary/20" : "bg-card",
+                isToday ? "ring-2 ring-primary ring-inset" : "",
+              ].join(" ")}
             >
-              <div
-                className={`text-[10px] font-mono mb-0.5 ${
-                  inMonth ? "text-foreground" : "text-muted-foreground"
-                }`}
-              >
+              <div className={[
+                "text-[11px] font-semibold mb-1 w-5 h-5 flex items-center justify-center rounded-full",
+                isToday ? "bg-primary text-primary-foreground" : "",
+                !inMonth ? "text-muted-foreground/40" : "text-foreground",
+              ].join(" ")}>
                 {d.getDate()}
               </div>
               {inMonth && dayContent(d)}
@@ -150,92 +164,57 @@ function MiniCalendar({
   );
 }
 
-// ---- Section A: Doctor Availability -----------------------------------------
-
-function seedDoctorBlocks(doctors: DoctorLite[]): DoctorBlock[] {
-  if (!doctors.length) return [];
-  const d = (n: number) => toYMD(addDays(new Date(), n));
-  const seed: Array<{ i: number; date: string; start: string; end: string; reason: string }> = [
-    { i: 0, date: d(2),  start: "14:00", end: "18:00", reason: "CME Conference" },
-    { i: 0, date: d(9),  start: "09:00", end: "13:00", reason: "Half-day leave" },
-    { i: 1, date: d(4),  start: "09:00", end: "17:00", reason: "Annual leave" },
-    { i: 1, date: d(5),  start: "09:00", end: "17:00", reason: "Annual leave" },
-    { i: 2, date: d(7),  start: "13:00", end: "17:00", reason: "External clinic duty" },
-    { i: 0, date: d(14), start: "09:00", end: "17:00", reason: "Workshop — laser certification" },
-  ];
-  return seed
-    .filter(s => s.i < doctors.length)
-    .map(s => ({ id: uid(), doctorId: doctors[s.i].id, date: s.date, startTime: s.start, endTime: s.end, reason: s.reason }));
-}
+// ── Doctor Section ────────────────────────────────────────────────────────────
 
 function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
-  const [selectedDoctorId, setSelectedDoctorId] = useState<number>(
-    doctors[0]?.id ?? 0
-  );
   const [blocks, setBlocks] = useState<DoctorBlock[]>(() => seedDoctorBlocks(doctors));
-  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
+  const [calYear, setCalYear]   = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
-
-  // form state
-  const [formDate, setFormDate] = useState("");
+  const [formDoctorId, setFormDoctorId] = useState<number>(doctors[0]?.id ?? 0);
+  const [formDate, setFormDate]   = useState("");
   const [formStart, setFormStart] = useState("09:00");
-  const [formEnd, setFormEnd] = useState("17:00");
+  const [formEnd, setFormEnd]     = useState("17:00");
   const [formReason, setFormReason] = useState("");
+  const [highlightId, setHighlightId] = useState<number | null>(null);
 
   function navMonth(delta: -1 | 1) {
-    setCalMonth((m) => {
+    setCalMonth(m => {
       const nm = m + delta;
-      if (nm < 0) { setCalYear((y) => y - 1); return 11; }
-      if (nm > 11) { setCalYear((y) => y + 1); return 0; }
+      if (nm < 0)  { setCalYear(y => y - 1); return 11; }
+      if (nm > 11) { setCalYear(y => y + 1); return 0; }
       return nm;
     });
   }
 
   function addBlock() {
-    if (!formDate || !formStart || !formEnd || !selectedDoctorId) return;
-    setBlocks((prev) => [
-      ...prev,
-      { id: uid(), doctorId: selectedDoctorId, date: formDate, startTime: formStart, endTime: formEnd, reason: formReason },
-    ]);
+    if (!formDate || !formStart || !formEnd || !formDoctorId) return;
+    setBlocks(prev => [...prev, { id: uid(), doctorId: formDoctorId, date: formDate, startTime: formStart, endTime: formEnd, reason: formReason }]);
     setFormDate("");
     setFormReason("");
   }
 
-  function removeBlock(id: string) {
-    setBlocks((prev) => prev.filter((b) => b.id !== id));
-  }
-
-  const DOC_COLORS = [
-    "bg-red-100 text-red-700 border-red-200",
-    "bg-blue-100 text-blue-700 border-blue-200",
-    "bg-violet-100 text-violet-700 border-violet-200",
-    "bg-emerald-100 text-emerald-700 border-emerald-200",
-    "bg-amber-100 text-amber-700 border-amber-200",
-    "bg-rose-100 text-rose-700 border-rose-200",
-  ];
-
-  // next 30 days upcoming — ALL doctors
+  const todayYmd = toYMD(new Date());
   const today = new Date();
-  const in30 = addDays(today, 30);
+  const in30  = addDays(today, 30);
+
   const upcoming = blocks
-    .filter((b) => { const d = isoToLocal(b.date); return d >= today && d <= in30; })
+    .filter(b => { const d = isoToLocal(b.date); return d >= today && d <= in30; })
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Combined calendar: show ALL doctors' blocks
   function dayContent(d: Date) {
     const ymd = toYMD(d);
-    const dayBlocks = blocks.filter((b) => b.date === ymd);
+    const dayBlocks = blocks.filter(b => b.date === ymd && (highlightId === null || b.doctorId === highlightId));
     if (!dayBlocks.length) return null;
     return (
       <div className="flex flex-col gap-0.5">
-        {dayBlocks.map((b) => {
-          const docIdx = doctors.findIndex(doc => doc.id === b.doctorId);
-          const cls = DOC_COLORS[docIdx % DOC_COLORS.length] ?? DOC_COLORS[0];
-          const lastName = doctors.find(doc => doc.id === b.doctorId)?.name.split(" ").pop() ?? "Dr";
+        {dayBlocks.map(b => {
+          const idx = doctors.findIndex(doc => doc.id === b.doctorId);
+          const col = DOC_COLORS[idx % DOC_COLORS.length];
+          const last = doctors.find(doc => doc.id === b.doctorId)?.name.split(" ").pop() ?? "Dr";
           return (
-            <span key={b.id} className={`block truncate rounded px-1 py-px text-[9px] border ${cls}`}
-              title={`${lastName} · ${b.startTime}–${b.endTime}${b.reason ? ` · ${b.reason}` : ""}`}>
-              {lastName} {b.startTime}–{b.endTime}
+            <span key={b.id} className={`block truncate rounded-sm px-1 py-px text-[9px] font-medium border ${col.soft}`}
+              title={`${last} · ${b.startTime}–${b.endTime}${b.reason ? ` · ${b.reason}` : ""}`}>
+              {last} {b.startTime}–{b.endTime}
             </span>
           );
         })}
@@ -244,243 +223,192 @@ function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Stethoscope className="h-4 w-4 text-primary" />
-          Doctor Availability Calendar
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Doctor selector */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide font-mono">
-            Select Doctor
-          </label>
-          <select
-            value={selectedDoctorId}
-            onChange={(e) => setSelectedDoctorId(Number(e.target.value))}
-            className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {doctors.map((d) => (
-              <option key={d.id} value={d.id}>
-                {d.name} · {d.specialty} ({d.branch_name})
-              </option>
-            ))}
-          </select>
-        </div>
+    <div className="space-y-5">
+
+      {/* Today's availability strip */}
+      <div className="flex flex-wrap gap-2">
+        {doctors.map((doc, i) => {
+          const col     = DOC_COLORS[i % DOC_COLORS.length];
+          const blocked = blocks.some(b => b.doctorId === doc.id && b.date === todayYmd);
+          return (
+            <button
+              key={doc.id}
+              onClick={() => setHighlightId(prev => prev === doc.id ? null : doc.id)}
+              className={[
+                "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-all",
+                highlightId === doc.id ? `${col.soft} ring-2 ring-offset-1 ring-current` : "bg-card border-border hover:border-foreground/30",
+              ].join(" ")}
+            >
+              <span className={`h-2 w-2 rounded-full shrink-0 ${blocked ? "bg-red-500" : "bg-emerald-500"}`} />
+              <div className="text-left">
+                <div className="font-semibold leading-tight text-foreground">{doc.name}</div>
+                <div className="text-[10px] text-muted-foreground">{doc.specialty} · {doc.branch_name}</div>
+              </div>
+              <span className={`ml-1 text-[9px] font-bold rounded-full px-2 py-0.5 ${blocked ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>
+                {blocked ? "Blocked today" : "Available"}
+              </span>
+            </button>
+          );
+        })}
+        {highlightId !== null && (
+          <button onClick={() => setHighlightId(null)} className="flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs text-muted-foreground hover:text-foreground">
+            <X className="h-3 w-3" /> Clear filter
+          </button>
+        )}
+      </div>
+
+      {/* Two-column: calendar + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
 
         {/* Calendar */}
-        <MiniCalendar
-          year={calYear}
-          month={calMonth}
-          onNav={navMonth}
-          dayContent={dayContent}
-        />
-
-        {/* Add block form */}
-        <div className="border border-border rounded p-3 space-y-3 bg-secondary/30">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono">
-            Add Unavailability Block
+        <div className="rounded-xl border border-border bg-card p-5">
+          <Calendar year={calYear} month={calMonth} onNav={navMonth} dayContent={dayContent}
+            onDayClick={ymd => setFormDate(ymd)} />
+          {/* Color legend */}
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+            {doctors.map((doc, i) => {
+              const col = DOC_COLORS[i % DOC_COLORS.length];
+              return (
+                <span key={doc.id} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${col.soft}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${col.dot}`} />
+                  {doc.name}
+                </span>
+              );
+            })}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase">Date</label>
-              <Input
-                type="date"
-                value={formDate}
-                onChange={(e) => setFormDate(e.target.value)}
-                className="mt-0.5"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase">Start Time</label>
-              <Input
-                type="time"
-                value={formStart}
-                onChange={(e) => setFormStart(e.target.value)}
-                className="mt-0.5"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase">End Time</label>
-              <Input
-                type="time"
-                value={formEnd}
-                onChange={(e) => setFormEnd(e.target.value)}
-                className="mt-0.5"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-mono text-muted-foreground uppercase">Reason (optional)</label>
-            <Input
-              placeholder="e.g. Out of clinic, Conference, Leave"
-              value={formReason}
-              onChange={(e) => setFormReason(e.target.value)}
-              className="mt-0.5"
-            />
-          </div>
-          <Button size="sm" onClick={addBlock} disabled={!formDate || !formStart || !formEnd}>
-            <Plus className="h-4 w-4" /> Add Block
-          </Button>
         </div>
 
-        {/* Legend */}
-        {doctors.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {doctors.map((doc, i) => (
-              <span key={doc.id} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium border ${DOC_COLORS[i % DOC_COLORS.length]}`}>
-                {doc.name}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Sidebar */}
+        <div className="space-y-4">
 
-        {/* Upcoming blocks — all doctors */}
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono mb-2">
-            All upcoming blocks (next 30 days)
+          {/* Add block form */}
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Add Unavailability Block</div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Doctor</label>
+              <select value={formDoctorId} onChange={e => setFormDoctorId(Number(e.target.value))}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                {doctors.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Date <span className="normal-case text-primary">(or click a day)</span></label>
+              <Input type="date" value={formDate} onChange={e => setFormDate(e.target.value)} />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">From</label>
+                <Input type="time" value={formStart} onChange={e => setFormStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">To</label>
+                <Input type="time" value={formEnd} onChange={e => setFormEnd(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Reason</label>
+              <Input placeholder="e.g. Conference, Leave" value={formReason} onChange={e => setFormReason(e.target.value)} />
+            </div>
+
+            <Button className="w-full" size="sm" onClick={addBlock} disabled={!formDate || !formStart || !formEnd}>
+              <Plus className="h-4 w-4" /> Add Block
+            </Button>
           </div>
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No blocks scheduled.</p>
-          ) : (
-            <ul className="space-y-2">
-              {upcoming.map((b) => {
-                const docName = doctors.find(doc => doc.id === b.doctorId)?.name ?? "Doctor";
-                const docIdx = doctors.findIndex(doc => doc.id === b.doctorId);
-                const cls = DOC_COLORS[docIdx % DOC_COLORS.length] ?? DOC_COLORS[0];
-                return (
-                  <li key={b.id} className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2 bg-card">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border shrink-0 ${cls}`}>{b.date}</span>
-                      <span className="text-sm font-medium text-foreground truncate">{docName}</span>
-                      <span className="text-xs text-muted-foreground">{b.startTime}–{b.endTime}</span>
-                      {b.reason && <span className="truncate text-xs text-muted-foreground">· {b.reason}</span>}
+
+          {/* Upcoming list */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Upcoming · next 30 days
+              <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">{upcoming.length}</span>
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No blocks scheduled.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                {upcoming.map(b => {
+                  const idx  = doctors.findIndex(doc => doc.id === b.doctorId);
+                  const col  = DOC_COLORS[idx % DOC_COLORS.length];
+                  const name = doctors.find(doc => doc.id === b.doctorId)?.name.split(" ").pop() ?? "Dr";
+                  return (
+                    <div key={b.id} className={`flex items-start justify-between gap-2 rounded-lg border px-3 py-2 ${col.soft}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold font-mono">{b.date}</span>
+                          <span className="text-xs font-semibold truncate">{name}</span>
+                          <span className="text-[10px] opacity-70">{b.startTime}–{b.endTime}</span>
+                        </div>
+                        {b.reason && <div className="text-[10px] opacity-70 mt-0.5 truncate">{b.reason}</div>}
+                      </div>
+                      <button onClick={() => setBlocks(p => p.filter(x => x.id !== b.id))}
+                        className="opacity-50 hover:opacity-100 shrink-0 mt-0.5">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => removeBlock(b.id)}
-                      className="text-muted-foreground hover:text-destructive p-1 shrink-0">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
-// ---- Section B: Appliances & Facilities -------------------------------------
-
-// Build a stable list of appliances from all branch statuses
-function collectAppliances(statuses: ClinicStatus[]): Array<{ id: string; name: string }> {
-  const seen = new Set<string>();
-  const result: Array<{ id: string; name: string }> = [];
-  for (const s of statuses) {
-    for (const a of s.appliances) {
-      if (a.name && !seen.has(a.name.toLowerCase())) {
-        seen.add(a.name.toLowerCase());
-        result.push({ id: a.name.toLowerCase().replace(/\s+/g, "-"), name: a.name });
-      }
-    }
-  }
-  // default fallbacks if no appliances in DB
-  if (!result.length) {
-    for (const n of ["Laser Machine", "IPL Device", "Hydrafacial Unit", "Consultation Room A"]) {
-      result.push({ id: n.toLowerCase().replace(/\s+/g, "-"), name: n });
-    }
-  }
-  return result;
-}
-
-function seedApplianceBlocks(appliances: Array<{ id: string; name: string }>): ApplianceBlock[] {
-  if (!appliances.length) return [];
-  const d = (n: number) => toYMD(addDays(new Date(), n));
-  const seed: Array<{ i: number; start: string; end: string; reason: string }> = [
-    { i: 0, start: d(1),  end: d(2),  reason: "Scheduled maintenance" },
-    { i: 1, start: d(5),  end: d(5),  reason: "Filter replacement" },
-    { i: 2, start: d(3),  end: d(3),  reason: "Deep clean & calibration" },
-    { i: 0, start: d(15), end: d(16), reason: "Annual servicing" },
-    { i: 3, start: d(8),  end: d(10), reason: "Under repair — cooling unit" },
-  ];
-  return seed
-    .filter(s => s.i < appliances.length)
-    .map(s => ({ id: uid(), applianceId: appliances[s.i].id, startDate: s.start, endDate: s.end, reason: s.reason }));
-}
+// ── Appliance Section ─────────────────────────────────────────────────────────
 
 function ApplianceSection({ statuses }: { statuses: ClinicStatus[] }) {
   const appliances = collectAppliances(statuses);
-
-  const [selectedApplianceId, setSelectedApplianceId] = useState<string>(
-    appliances[0]?.id ?? ""
-  );
-  const [blocks, setBlocks] = useState<ApplianceBlock[]>(() => seedApplianceBlocks(appliances));
-  const [calYear, setCalYear] = useState(() => new Date().getFullYear());
-  const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
-
-  const [formStart, setFormStart] = useState("");
-  const [formEnd, setFormEnd] = useState("");
-  const [formReason, setFormReason] = useState("");
+  const [blocks, setBlocks]         = useState<ApplianceBlock[]>(() => seedApplianceBlocks(appliances));
+  const [calYear, setCalYear]        = useState(() => new Date().getFullYear());
+  const [calMonth, setCalMonth]      = useState(() => new Date().getMonth());
+  const [formAppId, setFormAppId]    = useState(appliances[0]?.id ?? "");
+  const [formStart, setFormStart]    = useState("");
+  const [formEnd, setFormEnd]        = useState("");
+  const [formReason, setFormReason]  = useState("");
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   function navMonth(delta: -1 | 1) {
-    setCalMonth((m) => {
+    setCalMonth(m => {
       const nm = m + delta;
-      if (nm < 0) { setCalYear((y) => y - 1); return 11; }
-      if (nm > 11) { setCalYear((y) => y + 1); return 0; }
+      if (nm < 0)  { setCalYear(y => y - 1); return 11; }
+      if (nm > 11) { setCalYear(y => y + 1); return 0; }
       return nm;
     });
   }
 
   function addBlock() {
-    if (!formStart || !formEnd || !selectedApplianceId) return;
-    if (formEnd < formStart) return;
-    setBlocks((prev) => [
-      ...prev,
-      { id: uid(), applianceId: selectedApplianceId, startDate: formStart, endDate: formEnd, reason: formReason },
-    ]);
-    setFormStart("");
-    setFormEnd("");
-    setFormReason("");
+    if (!formStart || !formEnd || !formAppId || formEnd < formStart) return;
+    setBlocks(prev => [...prev, { id: uid(), applianceId: formAppId, startDate: formStart, endDate: formEnd, reason: formReason }]);
+    setFormStart(""); setFormEnd(""); setFormReason("");
   }
 
-  function removeBlock(id: string) {
-    setBlocks((prev) => prev.filter((b) => b.id !== id));
-  }
-
-  const APP_COLORS = [
-    "bg-amber-100 text-amber-700 border-amber-200",
-    "bg-red-100 text-red-700 border-red-200",
-    "bg-blue-100 text-blue-700 border-blue-200",
-    "bg-violet-100 text-violet-700 border-violet-200",
-    "bg-teal-100 text-teal-700 border-teal-200",
-    "bg-orange-100 text-orange-700 border-orange-200",
-  ];
-
+  const todayYmd = toYMD(new Date());
   const today = new Date();
-  const in30 = addDays(today, 30);
-  // Upcoming — ALL appliances
+  const in30  = addDays(today, 30);
+
   const upcoming = blocks
-    .filter((b) => isoToLocal(b.endDate) >= today && isoToLocal(b.startDate) <= in30)
+    .filter(b => isoToLocal(b.endDate) >= today && isoToLocal(b.startDate) <= in30)
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
-  // Combined calendar: show ALL appliance blocks per day
   function dayContent(d: Date) {
     const ymd = toYMD(d);
-    const dayBlocks = blocks.filter((b) => b.startDate <= ymd && b.endDate >= ymd);
+    const dayBlocks = blocks.filter(b => b.startDate <= ymd && b.endDate >= ymd && (highlightId === null || b.applianceId === highlightId));
     if (!dayBlocks.length) return null;
     return (
       <div className="flex flex-col gap-0.5">
-        {dayBlocks.map((b) => {
-          const appIdx = appliances.findIndex(a => a.id === b.applianceId);
-          const cls = APP_COLORS[appIdx % APP_COLORS.length] ?? APP_COLORS[0];
-          const shortName = appliances.find(a => a.id === b.applianceId)?.name.split(" ")[0] ?? "Unit";
+        {dayBlocks.map(b => {
+          const idx  = appliances.findIndex(a => a.id === b.applianceId);
+          const col  = APP_COLORS[idx % APP_COLORS.length];
+          const name = appliances.find(a => a.id === b.applianceId)?.name.split(" ")[0] ?? "Unit";
           return (
-            <span key={b.id} className={`block truncate rounded px-1 py-px text-[9px] border ${cls}`}
-              title={`${shortName}${b.reason ? ` · ${b.reason}` : " · Blocked"}`}>
-              {shortName}
+            <span key={b.id} className={`block truncate rounded-sm px-1 py-px text-[9px] font-medium border ${col.soft}`}
+              title={`${name}${b.reason ? ` · ${b.reason}` : " · Down"}`}>
+              {name}
             </span>
           );
         })}
@@ -489,133 +417,149 @@ function ApplianceSection({ statuses }: { statuses: ClinicStatus[] }) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <CalendarDays className="h-4 w-4 text-amber-500" />
-          Appliances &amp; Facilities Calendar
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {/* Appliance selector */}
-        <div>
-          <label className="block text-xs font-medium text-muted-foreground mb-1 uppercase tracking-wide font-mono">
-            Select Appliance / Facility
-          </label>
-          <select
-            value={selectedApplianceId}
-            onChange={(e) => setSelectedApplianceId(e.target.value)}
-            className="w-full rounded border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            {appliances.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name}
-              </option>
-            ))}
-          </select>
-        </div>
+    <div className="space-y-5">
+
+      {/* Current status grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {appliances.map((app, i) => {
+          const col     = APP_COLORS[i % APP_COLORS.length];
+          const blocked = blocks.some(b => b.applianceId === app.id && b.startDate <= todayYmd && b.endDate >= todayYmd);
+          const nextBlock = blocks
+            .filter(b => b.applianceId === app.id && b.startDate > todayYmd)
+            .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+          return (
+            <button
+              key={app.id}
+              onClick={() => setHighlightId(prev => prev === app.id ? null : app.id)}
+              className={[
+                "rounded-xl border p-3 text-left transition-all",
+                highlightId === app.id ? `${col.soft} ring-2 ring-offset-1 ring-current` : "bg-card border-border hover:border-foreground/30",
+              ].join(" ")}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${blocked ? "bg-red-500" : "bg-emerald-500"}`} />
+                {blocked
+                  ? <span className="text-[9px] font-bold bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">Down</span>
+                  : <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">Operational</span>}
+              </div>
+              <div className="text-sm font-semibold text-foreground leading-tight">{app.name}</div>
+              {nextBlock && !blocked && (
+                <div className="text-[10px] text-muted-foreground mt-1">Next down: {nextBlock.startDate}</div>
+              )}
+              {blocked && blocks.find(b => b.applianceId === app.id && b.startDate <= todayYmd && b.endDate >= todayYmd)?.reason && (
+                <div className="text-[10px] text-red-600/70 mt-1 truncate">
+                  {blocks.find(b => b.applianceId === app.id && b.startDate <= todayYmd && b.endDate >= todayYmd)?.reason}
+                </div>
+              )}
+            </button>
+          );
+        })}
+        {highlightId !== null && (
+          <button onClick={() => setHighlightId(null)} className="flex items-center justify-center gap-1 rounded-xl border border-dashed border-border px-3 py-3 text-xs text-muted-foreground hover:text-foreground">
+            <X className="h-3 w-3" /> Clear filter
+          </button>
+        )}
+      </div>
+
+      {/* Two-column: calendar + sidebar */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
 
         {/* Calendar */}
-        <MiniCalendar
-          year={calYear}
-          month={calMonth}
-          onNav={navMonth}
-          dayContent={dayContent}
-        />
-
-        {/* Add block form */}
-        <div className="border border-border rounded p-3 space-y-3 bg-secondary/30">
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono">
-            Block a Date Range
+        <div className="rounded-xl border border-border bg-card p-5">
+          <Calendar year={calYear} month={calMonth} onNav={navMonth} dayContent={dayContent}
+            onDayClick={ymd => { setFormStart(ymd); setFormEnd(ymd); }} />
+          {/* Legend */}
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+            {appliances.map((a, i) => {
+              const col = APP_COLORS[i % APP_COLORS.length];
+              return (
+                <span key={a.id} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${col.soft}`}>
+                  {a.name}
+                </span>
+              );
+            })}
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase">Start Date</label>
-              <Input
-                type="date"
-                value={formStart}
-                onChange={(e) => setFormStart(e.target.value)}
-                className="mt-0.5"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-mono text-muted-foreground uppercase">End Date</label>
-              <Input
-                type="date"
-                value={formEnd}
-                onChange={(e) => setFormEnd(e.target.value)}
-                className="mt-0.5"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] font-mono text-muted-foreground uppercase">Reason</label>
-            <Input
-              placeholder="e.g. Maintenance, Repair, Out of service"
-              value={formReason}
-              onChange={(e) => setFormReason(e.target.value)}
-              className="mt-0.5"
-            />
-          </div>
-          <Button
-            size="sm"
-            onClick={addBlock}
-            disabled={!formStart || !formEnd || formEnd < formStart}
-            className="bg-amber-500 hover:bg-amber-600 text-white"
-          >
-            <Plus className="h-4 w-4" /> Add Block
-          </Button>
         </div>
 
-        {/* Upcoming blocks */}
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground font-mono mb-2">
-            Upcoming blocks (next 30 days)
+        {/* Sidebar */}
+        <div className="space-y-4">
+
+          {/* Add block form */}
+          <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Block Appliance / Facility</div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Appliance</label>
+              <select value={formAppId} onChange={e => setFormAppId(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                {appliances.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">From <span className="normal-case text-primary">(click day)</span></label>
+                <Input type="date" value={formStart} onChange={e => setFormStart(e.target.value)} />
+              </div>
+              <div>
+                <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">To</label>
+                <Input type="date" value={formEnd} onChange={e => setFormEnd(e.target.value)} />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[10px] font-mono text-muted-foreground uppercase mb-1 block">Reason</label>
+              <Input placeholder="e.g. Maintenance, Repair" value={formReason} onChange={e => setFormReason(e.target.value)} />
+            </div>
+
+            <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white border-0" size="sm"
+              onClick={addBlock} disabled={!formStart || !formEnd || formEnd < formStart}>
+              <Plus className="h-4 w-4" /> Add Block
+            </Button>
           </div>
-          {upcoming.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No blocks scheduled.</p>
-          ) : (
-            <ul className="space-y-2">
-              {upcoming.map((b) => {
-                const appIdx = appliances.findIndex(a => a.id === b.applianceId);
-                const cls = APP_COLORS[appIdx % APP_COLORS.length] ?? APP_COLORS[0];
-                const appName = appliances.find(a => a.id === b.applianceId)?.name ?? b.applianceId;
-                return (
-                  <li key={b.id} className="flex items-center justify-between gap-3 rounded border border-border px-3 py-2 bg-card">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold border shrink-0 ${cls}`}>
-                        {b.startDate === b.endDate ? b.startDate : `${b.startDate} → ${b.endDate}`}
-                      </span>
-                      <span className="text-sm font-medium text-foreground truncate">{appName}</span>
-                      {b.reason && <span className="truncate text-xs text-muted-foreground">· {b.reason}</span>}
+
+          {/* Upcoming list */}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+              Upcoming · next 30 days
+              <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-[10px] font-bold">{upcoming.length}</span>
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No blocks scheduled.</p>
+            ) : (
+              <div className="space-y-1.5 max-h-80 overflow-y-auto">
+                {upcoming.map(b => {
+                  const idx  = appliances.findIndex(a => a.id === b.applianceId);
+                  const col  = APP_COLORS[idx % APP_COLORS.length];
+                  const name = appliances.find(a => a.id === b.applianceId)?.name ?? b.applianceId;
+                  return (
+                    <div key={b.id} className={`flex items-start justify-between gap-2 rounded-lg border px-3 py-2 ${col.soft}`}>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] font-bold font-mono">
+                            {b.startDate === b.endDate ? b.startDate : `${b.startDate} → ${b.endDate}`}
+                          </span>
+                          <span className="text-xs font-semibold truncate">{name}</span>
+                        </div>
+                        {b.reason && <div className="text-[10px] opacity-70 mt-0.5 truncate">{b.reason}</div>}
+                      </div>
+                      <button onClick={() => setBlocks(p => p.filter(x => x.id !== b.id))}
+                        className="opacity-50 hover:opacity-100 shrink-0 mt-0.5">
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                    <button type="button" onClick={() => removeBlock(b.id)}
-                      className="text-muted-foreground hover:text-destructive p-1 shrink-0">
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-
-        {/* Legend */}
-        {appliances.length > 0 && (
-          <div className="flex flex-wrap gap-2">
-            {appliances.map((a, i) => (
-              <span key={a.id} className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] font-medium border ${APP_COLORS[i % APP_COLORS.length]}`}>
-                {a.name}
-              </span>
-            ))}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }
 
-// ---- Root export ------------------------------------------------------------
+// ── Root export ───────────────────────────────────────────────────────────────
 
 export function ClinicStatusClient({
   statuses,
@@ -627,12 +571,12 @@ export function ClinicStatusClient({
   const [activeTab, setActiveTab] = useState<"doctors" | "appliances">("doctors");
 
   return (
-    <div className="space-y-0">
+    <div>
       {/* Tab bar */}
       <div className="flex border-b border-border mb-6">
         {([
-          { key: "doctors",    label: "Doctor Availability Calendar",       icon: <Stethoscope className="h-4 w-4" /> },
-          { key: "appliances", label: "Appliances & Facilities Calendar",   icon: <CalendarDays className="h-4 w-4" /> },
+          { key: "doctors",    label: "Doctor Availability", icon: <Stethoscope className="h-4 w-4" /> },
+          { key: "appliances", label: "Appliances & Facilities", icon: <CalendarDays className="h-4 w-4" /> },
         ] as const).map(t => (
           <button
             key={t.key}
