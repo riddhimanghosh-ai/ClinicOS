@@ -447,12 +447,11 @@ const MedicationsContent = () => (
 );
 
 /* ── TAB STRIP ── */
-type Tab = 'upcoming' | 'past' | 'prescriptions' | 'medications';
+type Tab = 'upcoming' | 'past' | 'prescriptions';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'upcoming',      label: 'Upcoming' },
   { id: 'past',          label: 'Past visits' },
   { id: 'prescriptions', label: 'Past purchases' },
-  { id: 'medications',   label: 'Medications' },
 ];
 
 const TabStrip = ({ active, onChange, desktop }: { active: Tab; onChange: (t: Tab) => void; desktop?: boolean }) => (
@@ -476,7 +475,6 @@ const TabContent = ({ tab, onBook }: { tab: Tab; onBook: () => void }) => (
     {tab === 'upcoming'      && <UpcomingContent onBook={onBook} />}
     {tab === 'past'          && <PastContent />}
     {tab === 'prescriptions' && <PastPurchasesContent />}
-    {tab === 'medications'   && <MedicationsContent />}
   </>
 );
 
@@ -512,14 +510,7 @@ const HistoryDesktop = () => {
             <div className="eyebrow gold dot">Kaya · Patient Portal</div>
             <div className="h3" style={{ marginTop: 6 }}>Appointments</div>
           </div>
-          <div className="row center" style={{ gap: 10 }}>
-            <button className="btn ghost sm" onClick={() => setShowBooking(true)}>+ Book visit</button>
-            <button className="btn ghost sm"><IconSearch size={14} /> Search</button>
-            <button className="btn ghost sm" style={{ position: 'relative' }}>
-              <IconBell size={14} />
-              <span style={{ position: 'absolute', top: 4, right: 6, width: 6, height: 6, borderRadius: '50%', background: 'var(--gold)' }} />
-            </button>
-          </div>
+          <div />
         </div>
 
         {/* Summary bar — next appointment + package progress */}
