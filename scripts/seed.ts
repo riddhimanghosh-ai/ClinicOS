@@ -440,10 +440,57 @@ function seedCheckIns() {
   }
 }
 
+function seedCurrentMonthPackages() {
+  const d = db();
+  // Add packages purchased in June 2026 so the current month shows real collection.
+  // collection_paid_inr > net_revenue_inr is guaranteed because sessions_used < sessions_total.
+  const insPackage = d.prepare(
+    `INSERT INTO packages_purchased (patient_id, service_id, sessions_total, sessions_used,
+      collection_paid_inr, purchase_date, expiry_date, order_number)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  const insSess = d.prepare(
+    `INSERT INTO sessions_consumed (package_id, patient_id, branch_id, doctor_id,
+      session_date, service_name_snapshot, session_type)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  );
+
+  const pkgs = [
+    { patientId: 2,  branchId: 1, doctorId: 1, svcId: 4,  name: "Thermage FLX",                     total: 1, used: 1, price: 180000, purchaseDate: "2026-06-02" },
+    { patientId: 4,  branchId: 2, doctorId: 3, svcId: 2,  name: "Laser Hair Reduction - Full Body",  total: 6, used: 1, price: 120000, purchaseDate: "2026-06-03" },
+    { patientId: 6,  branchId: 1, doctorId: 2, svcId: 3,  name: "Q-Switch Laser Toning",             total: 6, used: 1, price:  48000, purchaseDate: "2026-06-04" },
+    { patientId: 8,  branchId: 2, doctorId: 4, svcId: 10, name: "Microneedling for Scars",           total: 6, used: 0, price:  42000, purchaseDate: "2026-06-05" },
+    { patientId: 10, branchId: 1, doctorId: 1, svcId: 7,  name: "Acne Clearance Program",            total: 4, used: 1, price:  24000, purchaseDate: "2026-06-01" },
+    { patientId: 12, branchId: 2, doctorId: 3, svcId: 15, name: "Gentle Touch Small Essential",      total: 4, used: 0, price:  28000, purchaseDate: "2026-06-06" },
+    { patientId: 14, branchId: 1, doctorId: 2, svcId: 6,  name: "Chemical Peel - Glycolic",          total: 4, used: 1, price:  20000, purchaseDate: "2026-06-07" },
+    { patientId: 16, branchId: 2, doctorId: 4, svcId: 14, name: "Carbon Laser Peel",                 total: 4, used: 1, price:  15000, purchaseDate: "2026-06-04" },
+    { patientId: 18, branchId: 1, doctorId: 1, svcId: 8,  name: "Hydra Facial",                      total: 4, used: 2, price:  32000, purchaseDate: "2026-06-02" },
+    { patientId: 20, branchId: 2, doctorId: 3, svcId: 1,  name: "Laser Hair Reduction - Full Face",  total: 6, used: 0, price:  36000, purchaseDate: "2026-06-08" },
+  ];
+
+  pkgs.forEach(({ patientId, branchId, doctorId, svcId, name, total, used, price, purchaseDate }, i) => {
+    const expiry = new Date(purchaseDate);
+    expiry.setFullYear(expiry.getFullYear() + 1);
+    const info = insPackage.run(
+      patientId, svcId, total, used, price,
+      purchaseDate, expiry.toISOString().slice(0, 10),
+      `ORD-JUN2026-${String(i + 1).padStart(3, "0")}`
+    );
+    const pkgId = Number(info.lastInsertRowid);
+    for (let s = 0; s < used; s++) {
+      const sessDate = new Date(purchaseDate);
+      sessDate.setUTCDate(sessDate.getUTCDate() + (s + 1) * 3);
+      insSess.run(pkgId, patientId, branchId, doctorId,
+        sessDate.toISOString().slice(0, 10), name, s === 0 ? "consultation" : "treatment");
+    }
+  });
+}
+
 function main() {
   resetSchema();
   insertReference();
   seedPatients();
+  seedCurrentMonthPackages();
   seedCheckIns();
   const summary = clinicFinancialSummary();
   console.log(`Seeded ${NAMES.length} patients across ${BRANCHES.length} branches.`);
