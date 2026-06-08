@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Globe, MapPin, ChevronRight, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ChevronDown, Check } from "lucide-react";
+import { Globe, MapPin, ChevronRight, TrendingUp, TrendingDown, CheckCircle2, AlertTriangle, ChevronDown, Check, Calendar } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { inr } from "@/lib/utils";
@@ -135,6 +135,9 @@ export function ZoneManagerClient({
   todayLabel: string;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    monthlyRevenue.length > 0 ? monthlyRevenue[0].month : ""
+  );
 
   // Apply store filter
   const branches    = selectedIds.size > 0 ? allBranches.filter(b => selectedIds.has(b.id)) : allBranches;
@@ -171,11 +174,19 @@ export function ZoneManagerClient({
   const prevMonth   = monthlyRevenue[1];
   const revDelta    = latestMonth && prevMonth ? latestMonth.collection_inr - prevMonth.collection_inr : null;
 
+  // Selected month revenue
+  const selMonthData = monthlyRevenue.find(r => r.month === selectedMonth) ?? latestMonth;
+  const selMonthIdx  = monthlyRevenue.findIndex(r => r.month === selectedMonth);
+  const selPrevData  = selMonthIdx >= 0 ? monthlyRevenue[selMonthIdx + 1] : null;
+  const selDelta     = selMonthData && selPrevData
+    ? selMonthData.collection_inr - selPrevData.collection_inr
+    : null;
+
   return (
     <div className="space-y-10 pb-16">
 
-      {/* ── Store filter (top of page) ── */}
-      <div className="flex items-center justify-between">
+      {/* ── Top bar: title + month selector + store filter ── */}
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ fontFamily: "Inter Tight, sans-serif", letterSpacing: "-0.02em" }}>
             {zone ?? "Network Overview"}
@@ -184,17 +195,53 @@ export function ZoneManagerClient({
             <p className="text-xs text-muted-foreground mt-0.5">Zonal Head: {managerName}</p>
           )}
         </div>
-        <StoreFilter branches={allBranches} selectedIds={selectedIds} onChange={setSelectedIds} />
+        <div className="flex items-center gap-2">
+          {/* Month selector */}
+          <div className="relative flex items-center gap-1.5 border border-border bg-card px-3 py-2 text-sm">
+            <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="appearance-none bg-transparent text-sm font-medium pr-4 focus:outline-none cursor-pointer"
+            >
+              {monthlyRevenue.map((r, i) => (
+                <option key={r.month} value={r.month}>
+                  {i === 0 ? `${r.label} (this month)` : r.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
+          </div>
+          <StoreFilter branches={allBranches} selectedIds={selectedIds} onChange={setSelectedIds} />
+        </div>
       </div>
 
       {/* ── Network Financials ── */}
       <section>
-        <SectionHeading>Network financials</SectionHeading>
+        <SectionHeading>{selMonthData?.label ?? "This month"} — financials</SectionHeading>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <StatBox label="Total Collection"  value={inr(totalCollection)} accent />
-          <StatBox label="Net Revenue"        value={inr(totalNetRevenue)}
-            sub={totalCollection > 0 ? `${Math.round((totalNetRevenue / totalCollection) * 100)}% recognised` : undefined}
-            green />
+          {/* Month-scoped revenue */}
+          <div className="border border-primary/30 bg-primary/5 px-5 py-4 space-y-1">
+            <div className="text-2xl font-bold tabular-nums leading-none text-primary">
+              {inr(selMonthData?.collection_inr ?? 0)}
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Collection</div>
+            {selDelta !== null && (
+              <div className={`text-[10px] font-mono flex items-center gap-1 ${selDelta >= 0 ? "text-success" : "text-destructive"}`}>
+                {selDelta >= 0 ? "▲" : "▼"} {inr(Math.abs(selDelta))} vs {selPrevData?.label}
+              </div>
+            )}
+          </div>
+          <div className="border border-border bg-card px-5 py-4 space-y-1">
+            <div className="text-2xl font-bold tabular-nums leading-none text-success">
+              {inr(selMonthData?.net_revenue_inr ?? 0)}
+            </div>
+            <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">Net Revenue</div>
+            <div className="text-[10px] text-muted-foreground font-mono">
+              {selMonthData?.sessions_consumed_count ?? 0} sessions consumed
+            </div>
+          </div>
+          {/* All-time stats */}
           <StatBox label="Unearned Balance"   value={inr(totalUnearned)} sub="In unused packages" amber />
           <StatBox label="Total Patients"     value={totalPatients} />
           <StatBox label="Sessions Used"      value={totalUsed} />
@@ -417,12 +464,23 @@ export function ZoneManagerClient({
                 {monthlyRevenue
                   .filter(r => r.collection_inr > 0 || r.sessions_consumed_count > 0)
                   .map((row, i, arr) => {
-                    const prev  = arr[i + 1];
-                    const delta = prev ? row.collection_inr - prev.collection_inr : null;
-                    const isUp  = delta != null && delta > 0;
+                    const prev      = arr[i + 1];
+                    const delta     = prev ? row.collection_inr - prev.collection_inr : null;
+                    const isUp      = delta != null && delta > 0;
+                    const isSelected = row.month === selectedMonth;
                     return (
-                      <tr key={row.month} className="border-b border-border/50 last:border-0">
-                        <td className="px-5 py-3 font-medium">{row.label}</td>
+                      <tr
+                        key={row.month}
+                        onClick={() => setSelectedMonth(row.month)}
+                        className={`border-b border-border/50 last:border-0 cursor-pointer transition-colors ${isSelected ? "bg-primary/5" : "hover:bg-secondary/50"}`}
+                      >
+                        <td className="px-5 py-3 font-medium">
+                          <div className="flex items-center gap-2">
+                            {isSelected && <span className="h-1.5 w-1.5 bg-primary rounded-full shrink-0" />}
+                            {row.label}
+                            {i === 0 && <span className="text-[10px] font-mono text-muted-foreground">(current)</span>}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-right tabular-nums font-semibold">{inr(row.net_revenue_inr)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-success font-semibold">{inr(row.collection_inr)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.sessions_consumed_count}</td>

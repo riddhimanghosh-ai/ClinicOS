@@ -15,7 +15,7 @@ export default function ZoneManagerPage({
   const branchFin    = listBranchFinancials();
   const doctors      = listAllDoctors();
   const clinicStatus = listClinicStatus();
-  const monthlyRev   = getMonthlyRevenue(3);
+  const monthlyRev   = getMonthlyRevenue(12);
   const today        = new Date().toISOString().slice(0, 10);
   const todayAppts   = getAppointments(today);
   const todayLabel   = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
