@@ -486,8 +486,8 @@ export function ZoneManagerClient({
                             {i === 0 && <span className="text-[10px] font-mono text-muted-foreground">(current)</span>}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-right tabular-nums font-semibold">{inr(row.net_revenue_inr)}</td>
-                        <td className="px-4 py-3 text-right tabular-nums text-success font-semibold">{inr(row.collection_inr)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold">{inr(row.collection_inr)}</td>
+                        <td className="px-4 py-3 text-right tabular-nums text-success font-semibold">{inr(row.net_revenue_inr)}</td>
                         <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{row.sessions_consumed_count}</td>
                         <td className="px-5 py-3 text-right">
                           {delta != null ? (
