@@ -1225,54 +1225,40 @@ function LiveConsultPane({
     }
   };
 
-  const startRecording = async () => {
+  // ── Demo mode: skip microphone, show dummy data immediately ──────────────────
+  const startRecording = () => {
     setError(null);
     setResult(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      chunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "";
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        stopTimer();
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        const dur = elapsed;
-        if (chunksRef.current.length === 0) { setError("No audio captured."); return; }
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
-        await postAudio(blob, dur);
-      };
-      mediaRecorderRef.current = mr;
-      mr.start(1000);
-      setElapsed(0);
-      setRecording(true);
-      setPaused(false);
-      timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
-    } catch {
-      setError("Could not access microphone. Check browser permissions, or upload an audio file instead.");
-    }
+    setRecording(true);
+    setPaused(false);
+    setElapsed(0);
+    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
   };
 
-  const pauseRecording = () => {
-    mediaRecorderRef.current?.pause();
-    setPaused(true);
-    stopTimer();
-  };
+  const pauseRecording = () => { setPaused(true); stopTimer(); };
   const resumeRecording = () => {
-    mediaRecorderRef.current?.resume();
     setPaused(false);
     timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
   };
   const endRecording = () => {
+    stopTimer();
     setRecording(false);
     setPaused(false);
-    mediaRecorderRef.current?.stop();
+    setProcessing(true);
+    setTimeout(() => {
+      setProcessing(false);
+      setResult({
+        masked: "Patient presenting with diffuse hair thinning — [person] reports shedding for approximately 6 months. Family history of [person] with androgenic alopecia. Scalp examination shows miniaturisation along the frontal zone. Starting PRP therapy series of 4 sessions. Concurrent Minoxidil + Biotin home protocol. Dietary review recommended — increase protein and iron. Follow-up in 3 months with trichoscopy.",
+        attributes: {
+          condition: "Androgenic Alopecia",
+          hair_loss_duration: "6 months",
+          treatment_plan: "PRP × 4 sessions",
+          home_protocol: "Minoxidil 5% + Biotin",
+          follow_up: "3 months",
+        },
+      });
+      onSaved();
+    }, 1200);
   };
 
   const onFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1957,69 +1943,29 @@ function AddPrescriptionForm({
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
-  const startRecording = async () => {
+  // ── Demo mode: skip microphone + API, show dummy Rx immediately ──────────────
+  const startRecording = () => {
     setRxError(null);
     setTypeMode(false);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      chunksRef.current = [];
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "";
-      const mr = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mr.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-        stream.getTracks().forEach(t => t.stop());
-        if (!chunksRef.current.length) { setRxError("No audio captured — try again."); setPhase("idle"); return; }
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
-        setPhase("parsing");
-        try {
-          const fd = new FormData();
-          fd.append("audio", blob, "rx.webm");
-          const txRes = await fetch("/api/transcribe", { method: "POST", body: fd });
-          let txData: any = {};
-          try { txData = await txRes.json(); } catch { /* empty body — treat as no transcript */ }
-          const rawText: string = txData.transcript ?? "";
-
-          // Offline / mock-mode sentinel → skip parse API entirely, seed demo Rx items directly.
-          if (!rawText.trim() || rawText.startsWith("[Transcription unavailable") || rawText.startsWith("[Transcription failed")) {
-            const demoText = "Androgenic Alopecia — Minoxidil 5% solution, apply 1 ml to scalp twice daily. Biotin 5000 mcg tablet, one daily at bedtime. Anti Hair-Fall Serum 50 ml, 10 drops to scalp morning only.";
-            setTranscript(demoText);
-            setItems([
-              { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml · topical", dosage: "Apply 1 ml to scalp twice daily", dosage_detail: "Morning and night; leave on, do not rinse", cost: null },
-              { problem: "Hair thinning & follicle support", problem_type: "chronic", product: "Biotin 5000 mcg", product_detail: "30 tablets", dosage: "One tablet daily at bedtime", dosage_detail: "Take with water after dinner", cost: null },
-              { problem: "Scalp strengthening", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "10 drops to scalp, massage in", dosage_detail: "Morning only; no rinse required", cost: null },
-            ]);
-            setClinicalRec("Maintain consistent application schedule and avoid heat styling for 8 weeks. Use a sulphate-free shampoo. Follow up in 6 weeks to assess hair density and scalp health.");
-            setPhase("review");
-            return;
-          }
-
-          setTranscript(rawText);
-          const parseRes = await fetch("/api/prescriptions/parse", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ voice_text: rawText }),
-          });
-          let parseData: any = {};
-          try { parseData = await parseRes.json(); } catch { /* empty parse response */ }
-          setItems(Array.isArray(parseData.items) && parseData.items.length > 0 ? parseData.items : [emptyRow()]);
-          if (parseData.clinical_recommendation) setClinicalRec(parseData.clinical_recommendation);
-          setPhase("review");
-        } catch (err: any) {
-          setRxError(err?.message ?? "Processing failed — please try again.");
-          setPhase("idle");
-        }
-      };
-      mrRef.current = mr;
-      mr.start(1000);
-      setElapsed(0);
-      setPhase("recording");
-      timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
-    } catch {
-      setRxError("Could not access microphone — check browser permissions.");
-    }
+    setElapsed(0);
+    setPhase("recording");
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+    setTimeout(() => {
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      setPhase("parsing");
+      setTimeout(() => {
+        setTranscript("Patient has androgenic alopecia with moderate hair thinning. Starting GFC therapy — 4 sessions every 3 weeks. Minoxidil 5% — apply 1 ml to scalp twice daily, leave on. Biotin 5000 mcg — one tablet daily at bedtime with food. Anti Hair-Fall Serum — 10 drops morning only. SPF 50 every morning. Follow up in 6 weeks.");
+        setItems([
+          { problem: "Androgenic Alopecia", problem_type: "chronic", product: "GFC Therapy (Growth Factor Concentrate)", product_detail: "In-clinic procedure · scalp injection", dosage: "1 session every 3 weeks · 4 sessions", dosage_detail: "Platelet-rich growth factors — standard scalp protocol", cost: null },
+          { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml · topical", dosage: "Apply 1 ml to scalp twice daily", dosage_detail: "Morning and night; leave on, do not rinse", cost: null },
+          { problem: "Hair thinning & follicle support", problem_type: "chronic", product: "Biotin 5000 mcg", product_detail: "30 tablets", dosage: "One tablet daily at bedtime", dosage_detail: "Take with water after dinner", cost: null },
+          { problem: "Scalp nourishment", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "10 drops to scalp, massage gently", dosage_detail: "Morning only; no rinse required", cost: null },
+          { problem: "Sun protection", problem_type: null, product: "Kaya Daily Shield SPF 50", product_detail: "50 ml", dosage: "Apply generously every morning", dosage_detail: "Reapply every 2 hours outdoors", cost: null },
+        ]);
+        setClinicalRec("Starting GFC therapy series of 4 sessions alongside home protocol. Consistent Minoxidil application is critical — do not skip doses. Biotin supports follicle health over 3–6 months. Avoid heat styling and tight hairstyles. Use a sulphate-free shampoo. Follow up in 6 weeks to assess hair density.");
+        setPhase("review");
+      }, 800);
+    }, 1500);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
