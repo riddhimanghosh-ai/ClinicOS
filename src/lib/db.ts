@@ -1368,18 +1368,22 @@ export function getMonthlyRevenue(monthsBack = 2): MonthlyRevenueSummary[] {
        FROM product_purchases WHERE strftime('%Y-%m', purchase_date) = ?`
     ).get(month) as any).total as number;
 
+    // Sessions consumed from packages purchased in this month
     const sessCount = (d.prepare(
-      `SELECT COUNT(*) AS cnt FROM sessions_consumed WHERE strftime('%Y-%m', session_date) = ?`
-    ).get(month) as any).cnt as number;
-
-    // Net revenue = sum of (price_per_session × sessions consumed this month per package)
-    const pkgNetRevenue = (d.prepare(
-      `SELECT COALESCE(SUM(
-         CAST(pp.collection_paid_inr AS REAL) / NULLIF(pp.sessions_total, 0)
-       ), 0) AS total
+      `SELECT COUNT(*) AS cnt
        FROM sessions_consumed sc
        JOIN packages_purchased pp ON pp.id = sc.package_id
-       WHERE strftime('%Y-%m', sc.session_date) = ?`
+       WHERE strftime('%Y-%m', pp.purchase_date) = ?`
+    ).get(month) as any).cnt as number;
+
+    // Net revenue = portion of THIS month's package sales already consumed as sessions.
+    // Scoped to purchase_date so net_revenue is always <= collection for the same month.
+    const pkgNetRevenue = (d.prepare(
+      `SELECT COALESCE(SUM(
+         CAST(pp.collection_paid_inr AS REAL) * pp.sessions_used / NULLIF(pp.sessions_total, 0)
+       ), 0) AS total
+       FROM packages_purchased pp
+       WHERE strftime('%Y-%m', pp.purchase_date) = ?`
     ).get(month) as any).total as number;
 
     const netRevenue = pkgNetRevenue + prodCol;
