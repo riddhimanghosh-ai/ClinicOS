@@ -113,6 +113,60 @@ export function purgeSessionPrescriptions(): void {
   } catch {}
 }
 
+// ---------------------------------------------------------------------------
+// Reset today's demo appointments back to their seeded statuses and wipe any
+// practitioner/FnO sessions created during the demo. Called on every
+// /manager/appointments page render so the schedule board is always fresh.
+//
+// Booking numbers are deterministic (KAYA{200000 + i*137}), so we hardcode
+// the canonical seed status per booking number — this is resilient against
+// backfill capturing a stale/modified status.
+// ---------------------------------------------------------------------------
+const KAYA_SEED_STATUSES: Record<string, string> = {
+  KAYA200000: "done",
+  KAYA200137: "in_consultation",
+  KAYA200274: "consultation_done",
+  KAYA200411: "arrived",
+  KAYA200548: "booked",
+  KAYA200685: "in_treatment",
+  KAYA200822: "treatment_done",
+  KAYA200959: "booked",
+  KAYA201096: "confirmed",
+  KAYA201233: "arrived",
+  KAYA201370: "consultation_done",
+  KAYA201507: "booked",
+};
+
+export function resetDemoSchedule(): void {
+  const d = db();
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    // Restore each appointment to its canonical seed status
+    const stmt = d.prepare(`
+      UPDATE appointments SET status = ?, seed_status = ?
+      WHERE contact_booking_number = ? AND date(appointment_ts) = ?
+    `);
+    for (const [bookingNum, status] of Object.entries(KAYA_SEED_STATUSES)) {
+      stmt.run(status, status, bookingNum, today);
+    }
+    // Wipe practitioner sessions and FnO sessions tied to today's seeded appointments
+    d.prepare(`
+      DELETE FROM practitioner_sessions
+      WHERE appointment_id IN (
+        SELECT id FROM appointments
+        WHERE contact_booking_number LIKE 'KAYA%' AND date(appointment_ts) = ?
+      )
+    `).run(today);
+    d.prepare(`
+      DELETE FROM fno_sessions
+      WHERE appointment_id IN (
+        SELECT id FROM appointments
+        WHERE contact_booking_number LIKE 'KAYA%' AND date(appointment_ts) = ?
+      )
+    `).run(today);
+  } catch {}
+}
+
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS branches (
     id INTEGER PRIMARY KEY,
@@ -347,52 +401,83 @@ export function initSchema(handle?: Database.Database): void {
   try { d.exec("ALTER TABLE prescriptions ADD COLUMN dispensing_fee_inr INTEGER DEFAULT 60"); } catch {}
   try { d.exec("ALTER TABLE prescriptions ADD COLUMN is_seed INTEGER DEFAULT 0"); } catch {}
 
-  // Seed demo prescriptions for the first 5 patients — so any selected patient has at least one Rx on file.
+  // Seed demo prescriptions — always refresh seeds so content stays up to date.
   try {
-    const rxSeedExists = d.prepare("SELECT 1 FROM prescriptions WHERE is_seed = 1 LIMIT 1").get() as any;
-    if (!rxSeedExists) {
-      const seedPatients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 5").all() as any[];
-      const RX_SEEDS = [
-        {
-          items: JSON.stringify([
-            { problem: "हेयर लॉस", problem_type: "chronic", product: "मिनॉक्सिडेल (Minoxidil 5%)", product_detail: "Topical solution · 60 ml", dosage: "Apply 1 ml twice daily to affected scalp", dosage_detail: "Morning & evening · leave-on, do not rinse", cost: null },
-            { problem: "हेयर लॉस", problem_type: "chronic", product: "GFC Therapy (Growth Factor Concentrate)", product_detail: "In-clinic procedure", dosage: "1 session every 20–25 days · 3 sessions", dosage_detail: "Then monthly maintenance as needed", cost: null },
-            { problem: "हेयर लॉस", problem_type: null, product: "Anti Hair-Fall Serum", product_detail: "50 ml", dosage: "Apply 3–4 drops to scalp nightly", dosage_detail: "Massage gently · leave-on overnight", cost: null },
-            { problem: "Hyperpigmentation", problem_type: "chronic", product: "Hyperpigmentation Reducing Face Serum", product_detail: "30 ml", dosage: "Apply to affected areas morning & evening", dosage_detail: "After cleansing · before SPF in the morning", cost: null },
-            { problem: "Skin Brightening", problem_type: null, product: "Kaya Brightening Night Cream", product_detail: "50 ml", dosage: "Apply to face every night as the last step", dosage_detail: "After serum · avoid eye area", cost: null },
-          ]),
-          clinical: "Patient presents with androgenic (pattern) alopecia with dry scalp, and concurrent skin concerns (hyperpigmentation, dullness). Plan: PRP/GFC therapy — 3 sessions at 20–25 day intervals, then monthly maintenance. Minoxidil 5% to be applied consistently twice daily. Follow-up in 6–8 weeks to assess response.",
-        },
+    d.prepare("DELETE FROM prescriptions WHERE is_seed = 1").run();
+    const seedPatients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
+    const RX_SEEDS = [
+      {
+        items: JSON.stringify([
+          { problem: "Androgenic Alopecia", problem_type: "chronic", product: "GFC Hair Treatment", product_detail: "In-clinic procedure · scalp injection", dosage: "1 session every 20–25 days · 4 sessions", dosage_detail: "Growth factor concentrate protocol — then monthly maintenance", cost: 4500 },
+          { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "Topical · 60 ml", dosage: "Apply 1 ml twice daily to affected scalp", dosage_detail: "Morning & evening · leave-on, do not rinse", cost: 850 },
+          { problem: "Hair Thinning", problem_type: null, product: "Anti Hair-Fall Peptide Serum", product_detail: "50 ml", dosage: "Apply 3–4 drops to scalp nightly", dosage_detail: "Massage gently · leave-on overnight", cost: 1200 },
+          { problem: "Hyperpigmentation", problem_type: "chronic", product: "Brightening Face Serum", product_detail: "30 ml", dosage: "Apply to affected areas AM & PM", dosage_detail: "After cleansing · before SPF in the morning", cost: 950 },
+          { problem: "Skin Brightening", problem_type: null, product: "Brightening Night Cream", product_detail: "50 ml", dosage: "Apply to face every night as the last step", dosage_detail: "After serum · avoid eye area", cost: 900 },
+          { problem: "Daily Protection", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Generous application daily", dosage_detail: "AM · non-negotiable for pigmentation management", cost: 950 },
+        ]),
+        clinical: "Patient presents with androgenic (pattern) alopecia grade III with dry scalp. Starting GFC Therapy — 4 sessions at 20–25 day intervals, then monthly maintenance. Minoxidil 5% twice daily consistently. Concurrent brightening regimen for facial hyperpigmentation. Follow-up in 6–8 weeks.",
+      },
         {
           items: JSON.stringify([
             { problem: "Post-inflammatory hyperpigmentation", problem_type: "chronic", product: "Tretinoin 0.025% Cream", product_detail: "15g tube", dosage: "Apply pea-sized amount", dosage_detail: "PM · nightly · avoid eye area", cost: 580 },
             { problem: "Active acne (hormonal)", problem_type: "acute", product: "Azelaic Acid 15% Gel", product_detail: "20g tube", dosage: "Spot treatment", dosage_detail: "PM · on active lesions only", cost: 490 },
             { problem: "Sun protection", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Generous application", dosage_detail: "AM · reapply every 2h outdoors", cost: 950 },
+            { problem: "Skin Hydration & Texture", problem_type: null, product: "HydraFacial Session", product_detail: "In-clinic procedure", dosage: "1 session every 4 weeks", dosage_detail: "Book with front desk · avoid active breakouts on day of session", cost: null },
+            { problem: "Skin Brightening", problem_type: null, product: "Vitamin C Serum 15%", product_detail: "30 ml", dosage: "3–4 drops, apply to face", dosage_detail: "AM · before SPF · allow to absorb 2 min", cost: 1200 },
+            { problem: "Sun protection", problem_type: null, product: "Mineral Sunscreen SPF 50+", product_detail: "50 ml", dosage: "Generous application · 2 fingers", dosage_detail: "AM · every 2–3h if outdoors", cost: 850 },
+            { problem: "Pore refinement & Skin tone", problem_type: null, product: "Niacinamide 10% Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to face", dosage_detail: "PM · after cleansing · before tretinoin (wait 10 min)", cost: 750 },
+            { problem: "Skin barrier repair", problem_type: null, product: "Ceramide Moisturiser", product_detail: "50 ml", dosage: "Apply to face morning and night", dosage_detail: "Last step AM & PM · also acts as a buffer before tretinoin", cost: 900 },
           ]),
-          clinical: "Mild PIH with hormonal acne component. Continuing maintenance regimen post Phase 2 peels. Emphasis on daily sun protection and nightly retinoid to sustain PIH improvement.",
+          clinical: "Mild PIH with hormonal acne component. Continuing maintenance regimen post Phase 2 peels. Adding HydraFacial monthly for deep-cleansing and hydration. Vitamin C AM for brightening, Niacinamide PM for pore refinement and tone. Emphasis on daily sun protection and nightly retinoid to sustain PIH improvement. Ceramide moisturiser to support barrier health.",
         },
         {
           items: JSON.stringify([
-            { problem: "Laser Hair Reduction", problem_type: null, product: "PainFree Laser Session", product_detail: "Full legs", dosage: "1 session every 4–6 weeks", dosage_detail: "Shave 24h before · avoid sun exposure 2 weeks after", cost: null },
-            { problem: "Sun protection", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Apply daily to treated area", dosage_detail: "AM · mandatory post-laser", cost: 950 },
+            { problem: "Laser Hair Reduction", problem_type: null, product: "PainFree Laser Session", product_detail: "Full legs · In-clinic procedure", dosage: "1 session every 4–6 weeks · 6 sessions total", dosage_detail: "Shave 24h before · avoid sun exposure 2 weeks after", cost: 3800 },
+            { problem: "Sun protection (mandatory)", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Apply daily to treated area", dosage_detail: "AM · mandatory post-laser — skip = pigmentation risk", cost: 950 },
+            { problem: "Post-laser soothing", problem_type: null, product: "Aloe-Based Calming Gel", product_detail: "100 ml", dosage: "Apply to treated area after each session", dosage_detail: "Use for 3 days post-session · keep refrigerated for relief", cost: 650 },
+            { problem: "Skin Barrier", problem_type: null, product: "Ceramide Body Lotion", product_detail: "200 ml", dosage: "Apply to treated area twice daily", dosage_detail: "Morning & evening · gentle massage", cost: 1100 },
           ]),
-          clinical: "Ongoing laser hair reduction series — full legs. Currently on session 3 of 6. Good hair reduction noted. Continue protocol. Avoid sun exposure and waxing between sessions.",
+          clinical: "Ongoing laser hair reduction series — full legs. Currently session 3 of 6. Good hair reduction noted. Continue protocol. SPF and ceramide lotion mandatory throughout the series.",
         },
         {
           items: JSON.stringify([
-            { problem: "Skin Glow", problem_type: null, product: "Gluta Glow Face Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to cleansed face AM & PM", dosage_detail: "Before moisturiser", cost: null },
-            { problem: "Skin Glow & Hydration", problem_type: null, product: "Kaya NUTRA+ Glutathione Mouth Melt Powder", product_detail: "1 sachet per dose", dosage: "1 sachet daily · dissolve under tongue", dosage_detail: "Best taken on an empty stomach", cost: null },
+            { problem: "Skin Hydration & Glow", problem_type: null, product: "HydraFacial Session", product_detail: "In-clinic · 60 min", dosage: "1 session every 4 weeks", dosage_detail: "Cleanse → extract → hydrate protocol", cost: 3200 },
+            { problem: "Skin Brightening", problem_type: null, product: "Gluta Glow Face Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to cleansed face AM & PM", dosage_detail: "Before moisturiser", cost: 1350 },
+            { problem: "Skin Brightening", problem_type: null, product: "NUTRA+ Glutathione Powder", product_detail: "1 sachet per dose", dosage: "1 sachet daily · dissolve under tongue", dosage_detail: "Best taken on an empty stomach", cost: 800 },
             { problem: "Sun protection", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Apply daily", dosage_detail: "AM · every morning without fail", cost: 950 },
+            { problem: "Skin Hydration", problem_type: null, product: "Hyaluronic Acid Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to damp skin", dosage_detail: "PM · before moisturiser", cost: 1100 },
           ]),
-          clinical: "Post-HydraFacial maintenance plan. Skin barrier intact, excellent hydration. Recommend glutathione supplementation for sustained brightening alongside topical serum.",
+          clinical: "Post-HydraFacial maintenance plan. Skin barrier intact, excellent hydration. Recommend monthly HydraFacial sessions. Glutathione supplementation for sustained brightening. Daily SPF non-negotiable.",
         },
         {
           items: JSON.stringify([
+            { problem: "Hair Thinning", problem_type: "chronic", product: "PRP Hair Treatment", product_detail: "In-clinic procedure · scalp injection", dosage: "1 session every 3–4 weeks · 4 sessions", dosage_detail: "Platelet-rich plasma — standard scalp protocol", cost: 5500 },
             { problem: "Scalp Health", problem_type: "chronic", product: "Sulfate-Free Gentle Shampoo", product_detail: "200 ml", dosage: "Twice weekly wash", dosage_detail: "Gentle massage, 2-min contact, rinse cool", cost: 750 },
             { problem: "Hair Thinning", problem_type: "chronic", product: "Biotin Tablets", product_detail: "30 tablets", dosage: "1 tablet daily with meals", dosage_detail: "Continue for 3 months, reassess", cost: 650 },
             { problem: "Hair Thinning", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml", dosage: "1 ml twice daily to scalp", dosage_detail: "Morning & night · do not rinse", cost: 850 },
+            { problem: "Scalp Nourishment", problem_type: null, product: "Hair Growth Peptide Serum", product_detail: "50 ml", dosage: "Apply 3–4 drops to scalp nightly", dosage_detail: "Massage in circular motion · leave-on overnight", cost: 1800 },
           ]),
-          clinical: "Diffuse hair thinning — likely telogen effluvium with androgenic component. Starting Minoxidil + Biotin protocol. Dietary review recommended — increase protein and iron. Follow-up in 3 months with trichoscopy.",
+          clinical: "Diffuse hair thinning — telogen effluvium with androgenic component. Starting PRP therapy series of 4 sessions. Concurrent Minoxidil + Biotin home protocol. Dietary review recommended — increase protein and iron. Follow-up in 3 months with trichoscopy.",
+        },
+        {
+          items: JSON.stringify([
+            { problem: "Active Acne", problem_type: "acute", product: "Carbon Laser Peel", product_detail: "In-clinic procedure · full face", dosage: "1 session every 3–4 weeks · 4 sessions", dosage_detail: "Avoid retinoids 3 days before · gentle post-care 48h", cost: 2800 },
+            { problem: "Active Acne", problem_type: "acute", product: "Clindamycin 1% Gel", product_detail: "20g tube", dosage: "Thin layer on acne-prone areas", dosage_detail: "PM · after cleansing · before moisturiser", cost: 420 },
+            { problem: "Post-acne Marks", problem_type: "chronic", product: "Niacinamide 10% Serum", product_detail: "30 ml", dosage: "2–3 drops, apply to face", dosage_detail: "AM · before SPF · allow to absorb", cost: 750 },
+            { problem: "Skin Barrier", problem_type: null, product: "Gentle Barrier Moisturiser", product_detail: "50 ml", dosage: "Apply twice daily", dosage_detail: "AM & PM · last step", cost: 850 },
+            { problem: "Sun protection", problem_type: null, product: "SPF 50 PA+++ Sunscreen", product_detail: "50 ml", dosage: "Apply every morning", dosage_detail: "AM · mandatory — prevents PIH", cost: 950 },
+          ]),
+          clinical: "Grade 2 inflammatory acne with mild post-inflammatory hyperpigmentation. Starting Carbon Laser Peel series for active acne clearance. Topical antibiotic + niacinamide home regimen. Strict SPF compliance mandatory to prevent worsening of pigmentation.",
+        },
+        {
+          items: JSON.stringify([
+            { problem: "Melasma", problem_type: "chronic", product: "Q-Switch Laser Toning", product_detail: "In-clinic procedure · full face", dosage: "1 session every 4 weeks · 4 sessions", dosage_detail: "No retinoids 3 days before · strict SPF throughout course", cost: 3500 },
+            { problem: "Melasma", problem_type: "chronic", product: "Kojic Acid 2% Serum", product_detail: "30 ml", dosage: "Apply to pigmented areas PM", dosage_detail: "After cleansing · before moisturiser · avoid eye area", cost: 1100 },
+            { problem: "Melasma", problem_type: "chronic", product: "Vitamin C 15% Serum", product_detail: "30 ml", dosage: "3–4 drops, apply to face AM", dosage_detail: "Before SPF · allow 2 min to absorb", cost: 1200 },
+            { problem: "Sun protection (critical)", problem_type: null, product: "SPF 50 PA++++ Tinted Sunscreen", product_detail: "50 ml", dosage: "Generous application · reapply every 2h outdoors", dosage_detail: "AM · non-negotiable — sun triggers melasma", cost: 1050 },
+            { problem: "Hydration & Barrier", problem_type: null, product: "Ceramide Moisturiser", product_detail: "50 ml", dosage: "Apply morning and night", dosage_detail: "Last step AM & PM", cost: 900 },
+          ]),
+          clinical: "Grade 2 bilateral cheek melasma (Fitzpatrick IV). Post-glycolic peel phase, ready for Q-Switch Laser Toning series. Strict SPF compliance confirmed. Home regimen: Vitamin C AM, kojic acid PM. Total 4 monthly sessions. Realistic expectations discussed — maintenance required ongoing.",
         },
       ];
       const rxInsert = d.prepare(`
@@ -403,7 +488,6 @@ export function initSchema(handle?: Database.Database): void {
         const seed = RX_SEEDS[i % RX_SEEDS.length];
         rxInsert.run(p.id, seed.items, seed.clinical);
       });
-    }
   } catch {}
   try { d.exec("ALTER TABLE whatsapp_queue ADD COLUMN scheduled_at TEXT"); } catch {}
   try { d.exec("ALTER TABLE whatsapp_queue ADD COLUMN edited_body TEXT"); } catch {}
@@ -417,6 +501,7 @@ export function initSchema(handle?: Database.Database): void {
   try { d.exec("ALTER TABLE products_catalog ADD COLUMN is_new_launch INTEGER DEFAULT 0"); } catch {}
   try { d.exec("ALTER TABLE services_catalog ADD COLUMN discount_pct INTEGER DEFAULT 0"); } catch {}
   try { d.exec("ALTER TABLE products_catalog ADD COLUMN discount_pct INTEGER DEFAULT 0"); } catch {}
+  try { d.exec("ALTER TABLE products_catalog ADD COLUMN stock_qty INTEGER DEFAULT 0"); } catch {}
   try { d.exec("ALTER TABLE sessions_consumed ADD COLUMN session_type TEXT DEFAULT 'treatment'"); } catch {}
   try { d.exec("ALTER TABLE sessions_consumed ADD COLUMN treatment_notes TEXT"); } catch {}
   try { d.exec("ALTER TABLE appointments ADD COLUMN referred_by TEXT"); } catch {}
@@ -425,6 +510,16 @@ export function initSchema(handle?: Database.Database): void {
   try { d.exec("ALTER TABLE appointments ADD COLUMN sub_disposition TEXT"); } catch {}
   try { d.exec("ALTER TABLE appointments ADD COLUMN lead_type TEXT DEFAULT 'call'"); } catch {}
   try { d.exec("ALTER TABLE appointments ADD COLUMN campaign TEXT"); } catch {}
+  // seed_status stores the original demo status so resetDemoSchedule() can restore it
+  try { d.exec("ALTER TABLE appointments ADD COLUMN seed_status TEXT"); } catch {}
+  // Backfill seed_status for KAYA-prefixed demo appointments that were seeded before this column existed
+  try {
+    d.exec(`
+      UPDATE appointments SET seed_status = status
+      WHERE seed_status IS NULL
+        AND contact_booking_number LIKE 'KAYA%'
+    `);
+  } catch {}
   try {
     d.exec(`CREATE TABLE IF NOT EXISTS saved_cohorts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -451,37 +546,39 @@ export function initSchema(handle?: Database.Database): void {
       updated_by TEXT
     )`);
   } catch {}
-  // Seed today's appointments if none exist
+  // Seed today's appointments — re-seed if fewer than 10 to keep demo board full
   try {
     const today = new Date().toISOString().slice(0, 10);
     const cnt = (d.prepare("SELECT COUNT(*) as cnt FROM appointments WHERE date(appointment_ts) = ?").get(today) as any).cnt;
-    if (cnt === 0) {
-      const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 8").all() as any[];
-      const SERVICES   = ["Consultation","Laser Hair Reduction","Carbon Laser Peel","Acne Clearance Program","Q-Switch Laser Toning","Chemical Peel","Consultation","Microneedling for Scars"];
-      const TIMES      = ["09:00","09:30","10:00","10:30","11:00","11:30","14:00","14:30"];
-      const DOCTOR_IDS = [1, 2, 1, 3, 2, 3, 1, 4];
-      const DURATIONS  = [30, 60, 60, 45, 60, 45, 30, 75];
-      const LEAD_TYPES = ['website_form', 'chatbot', 'call', 'referral', 'campaign', 'walk_in'];
-      const DISPOSITIONS = ['New Consultation', 'Follow-up Visit', 'Treatment Session', 'Package Session'];
-      const SUB_DISPS = ['New Patient', 'Existing Patient', 'Re-engagement', 'Referral Patient'];
-      // Mix of statuses — always include 3 converted so Today's Completed is never empty
-      const STATUSES   = ['converted', 'in_session', 'converted', 'arrived', 'booked', 'converted', 'arrived', 'booked'];
+    if (cnt < 10) {
+      const patients = d.prepare("SELECT id FROM patients ORDER BY id LIMIT 12").all() as any[];
+      const SERVICES = [
+        "Initial Consultation", "HydraFacial · Phase 2", "Carbon Laser Peel",
+        "Acne Clearance Program", "Q-Switch Laser Toning", "Chemical Peel",
+        "Follow-up Consultation", "Microneedling for Scars", "GFC Hair Treatment",
+        "PRP Hair Therapy", "Laser Hair Reduction", "Initial Consultation",
+      ];
+      const TIMES      = ["09:00","09:30","10:00","10:30","11:00","11:30","12:00","14:00","14:30","15:00","15:30","16:00"];
+      const DOCTOR_IDS = [1, 2, 1, 3, 2, 3, 1, 4, 2, 1, 3, 4];
+      const DURATIONS  = [30, 60, 60, 45, 60, 45, 30, 75, 60, 60, 60, 30];
+      const LEAD_TYPES = ['website_form','chatbot','call','referral','campaign','walk_in','call','referral','chatbot','walk_in','call','campaign'];
+      const DISPOSITIONS = ['New Consultation','Follow-up Visit','Treatment Session','Package Session'];
+      const SUB_DISPS    = ['New Patient','Existing Patient','Re-engagement','Referral Patient'];
+      // Rich mix: new statuses included so schedule board shows all states
+      const STATUSES = [
+        'done', 'in_consultation', 'consultation_done',
+        'arrived', 'booked', 'in_treatment',
+        'treatment_done', 'booked', 'confirmed',
+        'arrived', 'consultation_done', 'booked',
+      ];
       patients.forEach((p: any, i: number) => {
-        const branchId = i < 4 ? 1 : 2;
-        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, contact_booking_number, disposition, sub_disposition, lead_type, duration_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
-          p.id, branchId, DOCTOR_IDS[i], SERVICES[i], `${today} ${TIMES[i]}:00`, STATUSES[i],
-          `VESC${String(100000 + i * 173)}`,
-          DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i % LEAD_TYPES.length], DURATIONS[i]
+        const branchId = i < 6 ? 1 : 2;
+        d.prepare("INSERT OR IGNORE INTO appointments (patient_id, branch_id, doctor_id, service_type, appointment_ts, status, seed_status, contact_booking_number, disposition, sub_disposition, lead_type, duration_minutes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)").run(
+          p.id, branchId, DOCTOR_IDS[i], SERVICES[i], `${today} ${TIMES[i]}:00`, STATUSES[i], STATUSES[i],
+          `KAYA${String(200000 + i * 137)}`,
+          DISPOSITIONS[i % DISPOSITIONS.length], SUB_DISPS[i % SUB_DISPS.length], LEAD_TYPES[i], DURATIONS[i]
         );
       });
-    }
-    // Always guarantee at least 2 converted appointments today (for demo readiness)
-    const convertedToday = (d.prepare("SELECT COUNT(*) as cnt FROM appointments WHERE date(appointment_ts) = ? AND status = 'converted'").get(today) as any).cnt;
-    if (convertedToday < 2) {
-      const nonConverted = d.prepare("SELECT id FROM appointments WHERE date(appointment_ts) = ? AND status NOT IN ('converted','no_show') ORDER BY id LIMIT ?").all(today, 2 - convertedToday) as any[];
-      for (const a of nonConverted) {
-        d.prepare("UPDATE appointments SET status = 'converted' WHERE id = ?").run(a.id);
-      }
     }
   } catch (_) {}
 
@@ -699,6 +796,19 @@ export function initSchema(handle?: Database.Database): void {
       ["RX-BARRIER",       "Ceramide Barrier Repair Cream",                  "Barrier",       950,  "Intensive barrier repair · 50 ml"],
     ];
     for (const row of rxProducts) ins.run(...row);
+  } catch {}
+
+  // Seed stock quantities for catalog products (idempotent — only updates where stock is 0)
+  try {
+    const stockSeeds: Record<string, number> = {
+      "RX-MINOXIDIL-5":  24, "RX-MINOXIDIL-5H": 18, "RX-HAIR-SERUM":   12,
+      "RX-GLUTA-SERUM":   8, "RX-HYPER-SERUM":   5, "RX-GLUTA-NUTRA":  30,
+      "RX-BRIGHT-CREAM": 15, "RX-BIOTIN":        40, "RX-SLS-SHAMPOO":  22,
+      "RX-SPF50":        35, "RX-SALICYLIC":     28, "RX-BENZ-PEROX":   14,
+      "RX-TRETINOIN":     9, "RX-AZ-GEL":        11, "RX-BARRIER":      20,
+    };
+    const upd = d.prepare("UPDATE products_catalog SET stock_qty = ? WHERE sku = ? AND (stock_qty IS NULL OR stock_qty = 0)");
+    for (const [sku, qty] of Object.entries(stockSeeds)) upd.run(qty, sku);
   } catch {}
 }
 
@@ -1486,6 +1596,26 @@ export function ensureDemoCheckIns(): void {
  * Returns patients who had a 'converted' appointment today — used to pre-populate
  * "Today's Completed" in the doctor portal sidebar on page load.
  */
+export function getTodayAppointments(): Array<{
+  id: number; patient_id: number; patient_name: string;
+  status: string; appointment_ts: string; branch_name: string | null;
+}> {
+  try {
+    const d = db();
+    return d.prepare(`
+      SELECT a.id, a.patient_id, p.name AS patient_name,
+             a.status, a.appointment_ts, b.name AS branch_name
+      FROM appointments a
+      JOIN patients p ON p.id = a.patient_id
+      LEFT JOIN branches b ON b.id = p.home_branch_id
+      WHERE date(a.appointment_ts) = date('now')
+        AND a.status NOT IN ('cancelled', 'no_show', 'rescheduled', 'done', 'converted')
+      ORDER BY a.appointment_ts ASC
+      LIMIT 20
+    `).all() as any[];
+  } catch { return []; }
+}
+
 export function getCompletedToday(): Array<{ id: number; name: string; fee?: number }> {
   try {
     const d = db();
@@ -1495,7 +1625,7 @@ export function getCompletedToday(): Array<{ id: number; name: string; fee?: num
       FROM appointments a
       JOIN patients p ON p.id = a.patient_id
       LEFT JOIN packages_purchased pk ON pk.patient_id = p.id
-      WHERE a.status = 'converted'
+      WHERE a.status IN ('converted', 'treatment_done')
         AND date(a.appointment_ts) = date('now')
       GROUP BY p.id
       ORDER BY a.appointment_ts ASC
