@@ -152,11 +152,27 @@ function MiniCalendar({
 
 // ---- Section A: Doctor Availability -----------------------------------------
 
+function seedDoctorBlocks(doctors: DoctorLite[]): DoctorBlock[] {
+  if (!doctors.length) return [];
+  const d = (n: number) => toYMD(addDays(new Date(), n));
+  const seed: Array<{ i: number; date: string; start: string; end: string; reason: string }> = [
+    { i: 0, date: d(2),  start: "14:00", end: "18:00", reason: "CME Conference" },
+    { i: 0, date: d(9),  start: "09:00", end: "13:00", reason: "Half-day leave" },
+    { i: 1, date: d(4),  start: "09:00", end: "17:00", reason: "Annual leave" },
+    { i: 1, date: d(5),  start: "09:00", end: "17:00", reason: "Annual leave" },
+    { i: 2, date: d(7),  start: "13:00", end: "17:00", reason: "External clinic duty" },
+    { i: 0, date: d(14), start: "09:00", end: "17:00", reason: "Workshop — laser certification" },
+  ];
+  return seed
+    .filter(s => s.i < doctors.length)
+    .map(s => ({ id: uid(), doctorId: doctors[s.i].id, date: s.date, startTime: s.start, endTime: s.end, reason: s.reason }));
+}
+
 function DoctorSection({ doctors }: { doctors: DoctorLite[] }) {
   const [selectedDoctorId, setSelectedDoctorId] = useState<number>(
     doctors[0]?.id ?? 0
   );
-  const [blocks, setBlocks] = useState<DoctorBlock[]>([]);
+  const [blocks, setBlocks] = useState<DoctorBlock[]>(() => seedDoctorBlocks(doctors));
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
 
@@ -380,13 +396,28 @@ function collectAppliances(statuses: ClinicStatus[]): Array<{ id: string; name: 
   return result;
 }
 
+function seedApplianceBlocks(appliances: Array<{ id: string; name: string }>): ApplianceBlock[] {
+  if (!appliances.length) return [];
+  const d = (n: number) => toYMD(addDays(new Date(), n));
+  const seed: Array<{ i: number; start: string; end: string; reason: string }> = [
+    { i: 0, start: d(1),  end: d(2),  reason: "Scheduled maintenance" },
+    { i: 1, start: d(5),  end: d(5),  reason: "Filter replacement" },
+    { i: 2, start: d(3),  end: d(3),  reason: "Deep clean & calibration" },
+    { i: 0, start: d(15), end: d(16), reason: "Annual servicing" },
+    { i: 3, start: d(8),  end: d(10), reason: "Under repair — cooling unit" },
+  ];
+  return seed
+    .filter(s => s.i < appliances.length)
+    .map(s => ({ id: uid(), applianceId: appliances[s.i].id, startDate: s.start, endDate: s.end, reason: s.reason }));
+}
+
 function ApplianceSection({ statuses }: { statuses: ClinicStatus[] }) {
   const appliances = collectAppliances(statuses);
 
   const [selectedApplianceId, setSelectedApplianceId] = useState<string>(
     appliances[0]?.id ?? ""
   );
-  const [blocks, setBlocks] = useState<ApplianceBlock[]>([]);
+  const [blocks, setBlocks] = useState<ApplianceBlock[]>(() => seedApplianceBlocks(appliances));
   const [calYear, setCalYear] = useState(() => new Date().getFullYear());
   const [calMonth, setCalMonth] = useState(() => new Date().getMonth());
 
