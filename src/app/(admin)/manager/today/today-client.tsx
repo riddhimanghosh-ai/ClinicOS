@@ -306,8 +306,11 @@ export function TodayClient({
         <CallQueueGrid groups={groups} onSelect={setSelectedKey} />
       )}
 
-      {/* Who to Call — all groups, full priority list */}
-      <WhoToCallAccordion groups={groups} />
+      {/* Who to Call — resets calledKeys whenever server data changes */}
+      <WhoToCallAccordion
+        key={groups.reduce((s, g) => s + g.entries.map(e => e.key).join(","), "")}
+        groups={groups}
+      />
     </div>
   );
 }
