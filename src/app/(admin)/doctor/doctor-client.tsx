@@ -72,11 +72,21 @@ export function DoctorClient({
         });
       } catch {}
     }
-    setLiveCheckIns(prev => prev.filter(c => c.patient_id !== patientId));
+
+    // Find the next patient in queue BEFORE updating state
+    const remaining = liveCheckIns.filter(c => c.patient_id !== patientId);
+    const nextPatient = remaining[0];
+
+    setLiveCheckIns(remaining);
     setCompletedPatients(prev => {
-      if (prev.some(p => p.id === patientId)) return prev; // dedup
+      if (prev.some(p => p.id === patientId)) return prev;
       return [...prev, { id: patientId, name: patientName, fee }];
     });
+
+    // Auto-advance to the next waiting patient
+    if (nextPatient) {
+      loadPortfolio(nextPatient.patient_id);
+    }
   };
 
   const loadPortfolio = async (id: number) => {
