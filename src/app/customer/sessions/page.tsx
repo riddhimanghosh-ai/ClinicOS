@@ -20,9 +20,9 @@ const IconBell    = (p: any) => <Icon {...p}><path d="M6 16 V11 C6 7.5 8.5 5 12 
 
 /* ── DATA ── */
 const UPCOMING = [
-  { d: 'Sat', dt: '31', mon: 'May', time: '11:30', doc: 'Dr. Ananya Sharma', treat: 'Hydrafacial · Phase 2', loc: 'Bandra West · Suite 04', in: 'in 4 days', confirm: true },
-  { d: 'Thu', dt: '12', mon: 'Jun', time: '15:00', doc: 'Dr. Ravi Krishnan',  treat: 'Acne consultation',    loc: 'Bandra West · Suite 02', in: 'in 16 days', confirm: false },
-  { d: 'Tue', dt: '24', mon: 'Jun', time: '10:00', doc: 'Dr. Ananya Sharma', treat: 'Phase 3 review',        loc: 'Bandra West · Suite 04', in: 'in 28 days', confirm: false },
+  { d: 'Sat', dt: '14', mon: 'Jun', time: '11:30', doc: 'Dr. Ananya Sharma', treat: 'Hydrafacial · Phase 3', loc: 'Bandra West · Suite 04', in: 'in 6 days', confirm: true },
+  { d: 'Fri', dt: '27', mon: 'Jun', time: '15:00', doc: 'Dr. Ravi Krishnan',  treat: 'Acne consultation',    loc: 'Bandra West · Suite 02', in: 'in 19 days', confirm: false },
+  { d: 'Mon', dt: '14', mon: 'Jul', time: '10:00', doc: 'Dr. Ananya Sharma', treat: 'Phase 4 review',        loc: 'Bandra West · Suite 04', in: 'in 36 days', confirm: false },
 ];
 
 const PAST = [
