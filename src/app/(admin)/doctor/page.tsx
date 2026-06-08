@@ -1,4 +1,4 @@
-import { listAllPatients, listLiveCheckIns, getPatientPortfolio, purgeSessionConsultations, purgeSessionPrescriptions, ensureDemoCheckIns, listAllDoctors, getCompletedToday } from "@/lib/db";
+import { listAllPatients, listLiveCheckIns, getPatientPortfolio, purgeSessionConsultations, purgeSessionPrescriptions, ensureDemoCheckIns, listAllDoctors, getCompletedToday, getTodayAppointments } from "@/lib/db";
 import { PageHeader } from "@/components/page-header";
 import { DoctorClient } from "./doctor-client";
 
@@ -19,9 +19,11 @@ export default function DoctorPage({
   const patients = listAllPatients();
   const checkIns = listLiveCheckIns();
   const completedToday = getCompletedToday();
+  const todayAppointments = getTodayAppointments();
   const initialId =
     Number(searchParams.patient) ||
     checkIns[0]?.patient_id ||
+    todayAppointments[0]?.patient_id ||
     patients[0]?.id ||
     0;
   const initialPortfolio = initialId ? getPatientPortfolio(initialId) : null;
@@ -36,6 +38,7 @@ export default function DoctorPage({
         patients={patients}
         checkIns={checkIns}
         completedToday={completedToday}
+        todayAppointments={todayAppointments}
         initialId={initialId}
         initialPortfolio={initialPortfolio}
         doctorName={demoDoctor.name}
