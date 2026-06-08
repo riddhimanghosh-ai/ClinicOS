@@ -310,16 +310,12 @@ function PortfolioView({
 
         {!isCompleted && (
         <TabsContent value="live">
-          <div className="space-y-4">
-            <LiveConsultPane
-              patientId={p.id}
-              doctorId={doctorId}
-              portfolio={portfolio}
-              onSaved={() => onTagSaved()}
-              onWriteRx={() => setActiveTab("visits")}
-            />
-            <ConsultPane patientId={p.id} onSaved={handleNoteSaved} />
-          </div>
+          <ConsultSection
+            patientId={p.id}
+            portfolio={portfolio}
+            onConsultSaved={() => onTagSaved()}
+            onNoteSaved={handleNoteSaved}
+          />
         </TabsContent>
         )}
         <TabsContent value="visits">
@@ -1248,7 +1244,7 @@ function LiveConsultPane({
     setTimeout(() => {
       setProcessing(false);
       setResult({
-        masked: "Patient presenting with diffuse hair thinning — [person] reports shedding for approximately 6 months. Family history of [person] with androgenic alopecia. Scalp examination shows miniaturisation along the frontal zone. Starting PRP therapy series of 4 sessions. Concurrent Minoxidil + Biotin home protocol. Dietary review recommended — increase protein and iron. Follow-up in 3 months with trichoscopy.",
+        masked: `So [person], looking at your scalp today — I can clearly see the miniaturisation pattern along the frontal and crown zone, which is very typical of androgenic alopecia. You mentioned the shedding started about six months ago, and yes, the family history on your father's side does make this a classic presentation.\n\nI want to start you on a GFC therapy series — that's Growth Factor Concentrate — four sessions, once every three weeks. It's a great option for your stage because we're using your own platelets to stimulate the follicles before they go completely dormant. Alongside that, I'm putting you on Minoxidil 5% solution — one millilitre to the scalp, twice daily, morning and night. You leave it on, don't rinse it off. That's important.\n\nFor your diet, I'm a bit concerned — your iron and protein levels look borderline from the last report. I'd like you to consciously add more lentils, eggs, and spinach. This will complement the treatment significantly.\n\nWe'll do a trichoscopy review in three months to compare follicle density and decide whether to continue the GFC series. If you're consistent with the home protocol, I'm optimistic we'll see meaningful improvement.`,
         attributes: {
           condition: "Androgenic Alopecia",
           hair_loss_duration: "6 months",
@@ -1676,6 +1672,233 @@ function ConsultPane({ patientId, onSaved }: { patientId: number; onSaved: () =>
   );
 }
 
+// ---- Unified consult section (new layout) -----------------------------------
+
+function ConsultSection({
+  patientId,
+  portfolio,
+  onConsultSaved,
+  onNoteSaved,
+}: {
+  patientId: number;
+  portfolio: PatientPortfolio;
+  onConsultSaved: () => void;
+  onNoteSaved: () => void;
+}) {
+  // ── Consultation recording state ──────────────────────────────────────────
+  const [recording, setRecording]   = useState(false);
+  const [paused, setPaused]         = useState(false);
+  const [elapsed, setElapsed]       = useState(0);
+  const [processing, setProcessing] = useState(false);
+  const [consultResult, setConsultResult] = useState<{ masked: string; attributes: Record<string,string> } | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopTimer = () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } };
+  useEffect(() => () => stopTimer(), []);
+
+  const startRecording = () => {
+    setConsultResult(null);
+    setRecording(true); setPaused(false); setElapsed(0);
+    timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000);
+  };
+  const pauseRecording  = () => { setPaused(true);  stopTimer(); };
+  const resumeRecording = () => { setPaused(false); timerRef.current = setInterval(() => setElapsed(e => e + 1), 1000); };
+  const endRecording    = () => {
+    stopTimer(); setRecording(false); setPaused(false); setProcessing(true);
+    setTimeout(() => {
+      setProcessing(false);
+      setConsultResult({
+        masked: `So [person], looking at your scalp today — I can clearly see the miniaturisation pattern along the frontal and crown zone, which is very typical of androgenic alopecia. You mentioned the shedding started about six months ago, and yes, the family history on your father's side does make this a classic presentation.\n\nI want to start you on a GFC therapy series — that's Growth Factor Concentrate — four sessions, once every three weeks. It's a great option for your stage because we're using your own platelets to stimulate the follicles before they go completely dormant. Alongside that, I'm putting you on Minoxidil 5% solution — one millilitre to the scalp, twice daily, morning and night. You leave it on, don't rinse it off. That's important.\n\nFor your diet, I'm a bit concerned — your iron and protein levels look borderline from the last report. I'd like you to consciously add more lentils, eggs, and spinach. This will complement the treatment significantly.\n\nWe'll do a trichoscopy review in three months to compare follicle density and decide whether to continue the GFC series. If you're consistent with the home protocol, I'm optimistic we'll see meaningful improvement.`,
+        attributes: { condition: "Androgenic Alopecia", hair_loss_duration: "6 months", treatment_plan: "PRP × 4 sessions", home_protocol: "Minoxidil 5% + Biotin", follow_up: "3 months" },
+      });
+      onConsultSaved();
+    }, 1200);
+  };
+
+  // ── Post-consult note state ───────────────────────────────────────────────
+  const [showNoteForm, setShowNoteForm] = useState(false);
+  const [note, setNote]               = useState("");
+  const [history, setHistory]         = useState<Array<{role:"doctor"|"system";content:any}>>([]);
+  const [generating, setGenerating]   = useState(false);
+  const [pending, start]              = useTransition();
+
+  const generateSampleNote = async () => {
+    setGenerating(true);
+    try { await fetch(`/api/patients/${patientId}/generate-sample-note`, { method: "POST" }); onNoteSaved(); }
+    finally { setGenerating(false); }
+  };
+  const send = () => {
+    if (!note.trim()) return;
+    const text = note.trim(); setNote("");
+    setHistory(h => [...h, { role: "doctor", content: text }]);
+    start(async () => {
+      const res  = await fetch("/api/tags/extract", { method: "POST", headers: {"Content-Type":"application/json"}, body: JSON.stringify({ patient_id: patientId, note: text }) });
+      const data = await res.json();
+      setHistory(h => [...h, { role: "system", content: data.saved }]);
+      onNoteSaved();
+    });
+  };
+
+  // ── Prescription state ────────────────────────────────────────────────────
+  const [showRx, setShowRx] = useState(false);
+  const rxActive = consultResult !== null || showRx;
+
+  const weightText = portfolio.attributes.find(a => a.key === "weight_kg")?.value
+    ? `${portfolio.attributes.find(a => a.key === "weight_kg")!.value} kg` : null;
+
+  return (
+    <Card>
+      <CardContent className="pt-6 space-y-6">
+
+        {/* ── 1. BIG CIRCLE — consultation recording, centered ── */}
+        <div className="flex flex-col items-center gap-2 py-4">
+          {recording ? (
+            <button onClick={endRecording}
+              className="relative h-24 w-24 rounded-full bg-destructive text-white flex items-center justify-center shadow-lg ring-4 ring-destructive/25">
+              <span className={`absolute inset-0 rounded-full bg-destructive/30 ${paused ? "" : "animate-ping"}`} />
+              <Square className="h-8 w-8 relative z-10" />
+            </button>
+          ) : (
+            <button onClick={startRecording} disabled={processing}
+              className={["h-24 w-24 rounded-full flex items-center justify-center shadow-md transition-all",
+                consultResult ? "bg-muted/40 text-muted-foreground/50 cursor-default"
+                : processing  ? "bg-muted/40 text-muted-foreground/50 cursor-default"
+                : "bg-foreground text-background hover:bg-foreground/80 active:scale-95"].join(" ")}>
+              {processing ? <Loader2 className="h-8 w-8 animate-spin" /> : <Mic className="h-8 w-8" />}
+            </button>
+          )}
+          <span className={["text-xs font-medium", consultResult ? "text-muted-foreground/50" : "text-muted-foreground"].join(" ")}>
+            {recording ? <>{paused ? "Paused" : "Recording"} · {fmtClock(elapsed)}</> : processing ? "Transcribing…" : consultResult ? "Recording done" : "Start consultation recording"}
+          </span>
+          <div className="flex items-center gap-3">
+            <Badge variant="outline" className="gap-1 text-[10px]">
+              <ShieldCheck className="h-3 w-3" /> PII encrypted
+            </Badge>
+            {recording && (
+              <button onClick={paused ? resumeRecording : pauseRecording}
+                className="text-[10px] text-muted-foreground underline hover:text-foreground">
+                {paused ? "Resume" : "Pause"}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ── 2. TWO SMALL CIRCLES ── */}
+        <div className="flex items-start justify-between border-t border-b border-border py-5 px-6">
+
+          {/* LEFT: Post-consultation */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => setShowNoteForm(v => !v)}
+              className={["h-12 w-12 rounded-full flex items-center justify-center shadow-sm transition-all border",
+                showNoteForm
+                  ? "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95"
+                  : "bg-secondary text-muted-foreground border-border hover:bg-secondary/80 active:scale-95",
+              ].join(" ")}
+            >
+              <MicOff className="h-4 w-4" />
+            </button>
+            <span className="text-[11px] font-medium text-muted-foreground">Post-consult</span>
+          </div>
+
+          {/* RIGHT: Prescription */}
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => setShowRx(v => !v)}
+              className={["h-12 w-12 rounded-full flex items-center justify-center shadow-sm transition-all border",
+                !rxActive
+                  ? "bg-muted/20 text-muted-foreground/40 border-border/40 backdrop-blur-sm cursor-default"
+                  : showRx
+                  ? "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95"
+                  : "bg-foreground text-background border-transparent hover:bg-foreground/80 active:scale-95",
+              ].join(" ")}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <span className={["text-[11px] font-medium", !rxActive ? "text-muted-foreground/40" : "text-muted-foreground"].join(" ")}>
+              {showRx ? "Close Rx" : "Prescription"}
+            </span>
+          </div>
+        </div>
+
+        {/* ── 3. Consultation results ── */}
+        {processing && (
+          <div className="flex items-center gap-2 rounded-md border border-accent/30 bg-accent/10 px-4 py-3 text-sm font-medium text-accent">
+            <Loader2 className="h-4 w-4 animate-spin" /> Transcribing &amp; extracting data points…
+          </div>
+        )}
+        {consultResult && (
+          <div className="space-y-4">
+            {Object.keys(consultResult.attributes).length > 0 && (
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Data points extracted for cohorts</div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(consultResult.attributes).map(([k, v]) => (
+                    <Badge key={k} variant="accent" className="text-[11px]">{formatLabel(k)}: {v}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">Masked transcript</div>
+              <div className="max-h-40 overflow-auto rounded-md border border-border bg-secondary/20 p-3 text-sm leading-relaxed whitespace-pre-wrap">
+                {consultResult.masked}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── 4. Post-consult note form ── */}
+        {showNoteForm && (
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Post-consultation notes</div>
+            <div className="space-y-2">
+              {history.length === 0 ? (
+                <div className="rounded-md border border-dashed border-border bg-secondary/40 p-4 text-center text-xs text-muted-foreground">
+                  Try: "Acne cleared, mild boxcar scars on left cheek, barrier intact, ready for microneedling."
+                </div>
+              ) : (
+                history.map((msg, i) => (
+                  <div key={i} className={`rounded-md p-3 ${msg.role === "doctor" ? "bg-secondary text-foreground ml-6" : "bg-accent/5 border border-accent/30 mr-6"}`}>
+                    {msg.role === "doctor"
+                      ? <div className="text-sm whitespace-pre-wrap">{msg.content}</div>
+                      : <div>
+                          <div className="text-xs font-medium uppercase tracking-wide text-accent mb-2">Extracted tags</div>
+                          <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(stripIds(msg.content), null, 2)}</pre>
+                        </div>}
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Textarea value={note} onChange={e => setNote(e.target.value)} placeholder="Dump observations…" rows={2}
+                onKeyDown={e => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) send(); }} />
+              <div className="flex flex-col gap-2">
+                <Button onClick={send} disabled={pending || !note.trim()} size="sm">
+                  {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} Extract
+                </Button>
+              </div>
+            </div>
+            <button onClick={generateSampleNote} disabled={generating}
+              className="flex items-center gap-1.5 text-xs text-accent border border-accent/30 rounded-md px-2.5 py-1.5 bg-accent/5 hover:bg-accent/10 transition-colors disabled:opacity-50">
+              {generating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Generate sample note
+            </button>
+          </div>
+        )}
+
+        {/* ── 5. Prescription form ── */}
+        {showRx && (
+          <div className="border-t border-border pt-4">
+            <AddPrescriptionForm patient={portfolio.patient} weightText={weightText}
+              onSaved={() => { setShowRx(false); onNoteSaved(); }} />
+          </div>
+        )}
+
+      </CardContent>
+    </Card>
+  );
+}
+
 function stripIds(obj: any) {
   if (!obj || typeof obj !== "object") return obj;
   const { id, patient_id, session_id, ...rest } = obj;
@@ -1954,7 +2177,7 @@ function AddPrescriptionForm({
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
       setPhase("parsing");
       setTimeout(() => {
-        setTranscript("Patient has androgenic alopecia with moderate hair thinning. Starting GFC therapy — 4 sessions every 3 weeks. Minoxidil 5% — apply 1 ml to scalp twice daily, leave on. Biotin 5000 mcg — one tablet daily at bedtime with food. Anti Hair-Fall Serum — 10 drops morning only. SPF 50 every morning. Follow up in 6 weeks.");
+        setTranscript(`Alright [person], so based on today's consultation, here is what I am prescribing. First — GFC therapy, Growth Factor Concentrate, four sessions, one every three weeks. This is the in-clinic treatment we discussed, scalp injection, done here at Kaya.\n\nFor the home protocol — Minoxidil 5% solution, apply one millilitre directly to the scalp twice daily, morning and night. Do not rinse it off for at least four hours. This is very important, don't skip it. Next — Biotin 5000 mcg, one tablet every night at bedtime with your dinner. And the Anti Hair-Fall Serum — ten drops massaged into the scalp every morning, before you step out.\n\nI also want you on SPF 50 sunscreen every single morning — not optional, it protects the scalp during the treatment phase.\n\nPlease come back in six weeks and we'll do a quick density check to see how the follicles are responding. Any questions before you go?`);
         setItems([
           { problem: "Androgenic Alopecia", problem_type: "chronic", product: "GFC Therapy (Growth Factor Concentrate)", product_detail: "In-clinic procedure · scalp injection", dosage: "1 session every 3 weeks · 4 sessions", dosage_detail: "Platelet-rich growth factors — standard scalp protocol", cost: null },
           { problem: "Androgenic Alopecia", problem_type: "chronic", product: "Minoxidil 5% Solution", product_detail: "60 ml · topical", dosage: "Apply 1 ml to scalp twice daily", dosage_detail: "Morning and night; leave on, do not rinse", cost: null },
