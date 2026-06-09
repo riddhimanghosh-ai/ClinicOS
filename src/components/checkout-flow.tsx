@@ -47,6 +47,7 @@ type LineItem = {
   priceOverride: boolean;   // true if manager manually set the price
   isTreatment: boolean;     // true if an in-clinic procedure
   isExtra: boolean;         // true if added manually (not from Rx)
+  qty: number;              // units / sessions
 };
 
 // Clinic's standard promo discount (applied with one tap)
@@ -73,7 +74,7 @@ function fallbackPrice(name: string): number {
 }
 
 function lineTotal(item: LineItem): number {
-  return Math.round(item.basePrice * (1 - item.discountPct / 100));
+  return Math.round(item.basePrice * item.qty * (1 - item.discountPct / 100));
 }
 
 export function CheckoutFlow({
@@ -83,7 +84,9 @@ export function CheckoutFlow({
   serviceType,
   onClose,
   onStartTreatment,
+  onTreatmentSelectionChange,
   productsOnly = false,
+  collectTrigger = 0,
 }: {
   appointmentId: number;
   patientId: number;
@@ -91,7 +94,9 @@ export function CheckoutFlow({
   serviceType: string;
   onClose: () => void;
   onStartTreatment?: () => void;
+  onTreatmentSelectionChange?: (hasTreatment: boolean) => void;
   productsOnly?: boolean;
+  collectTrigger?: number;
 }) {
   const router = useRouter();
   const [phase, setPhase] = useState<CheckoutPhase>("items");
@@ -146,21 +151,21 @@ export function CheckoutFlow({
           priceOverride: existingCost != null,
           isTreatment: isClinicProcedure(it),
           isExtra: false,
+          qty: 1,
         };
       });
 
-      // In productsOnly mode (Rx tab), strip in-clinic procedures — patient is buying take-home products
-      const filtered = productsOnly ? items.filter(it => !it.isTreatment) : items;
-      setLineItems(filtered);
-      setSelected(filtered.map(() => true));
-      setDiscountOpen(filtered.map(() => false));
-      setEditingPrice(filtered.map(() => false));
+      // Always store all items — visibleItems handles UI filtering for productsOnly mode
+      setLineItems(items);
+      setSelected(items.map(() => true));
+      setDiscountOpen(items.map(() => false));
+      setEditingPrice(items.map(() => false));
     } catch (e) {
       console.error(e);
       const fallback: LineItem[] = [{
         id: 0, product: serviceType, product_detail: "Appointment service fee",
         basePrice: fallbackPrice(serviceType), discountPct: 0, priceOverride: false,
-        isTreatment: false, isExtra: false,
+        isTreatment: false, isExtra: false, qty: 1,
       }];
       setLineItems(fallback);
       setSelected([true]);
@@ -170,15 +175,34 @@ export function CheckoutFlow({
     setRxLoading(false);
   };
 
-  // Auto-load on mount
-  useEffect(() => { loadRx(); }, []);
+  // Re-run loadRx if productsOnly changes (e.g. status flips to treatment_done while mounted)
+  useEffect(() => { loadRx(); }, [productsOnly]);
 
   // ── Derived values ────────────────────────────────────────────────────────────
-  const selectedItems = lineItems.filter((_, i) => selected[i]);
+  // All items are always shown; treatments are locked (non-interactive) when productsOnly
+  const selectedItems = lineItems.filter((_, i) => selected[i] && (!productsOnly || !lineItems[i].isTreatment));
   const selectedProducts = selectedItems.filter(it => !it.isTreatment);
-  const selectedTreatments = selectedItems.filter(it => it.isTreatment);
-  const total = selectedProducts.reduce((s, it) => s + lineTotal(it), 0);
+  const selectedTreatments = productsOnly ? [] : selectedItems.filter(it => it.isTreatment);
+  const productTotal = selectedProducts.reduce((s, it) => s + lineTotal(it), 0);
+  const doneTreatmentTotal = productsOnly
+    ? lineItems.filter(it => it.isTreatment).reduce((s, it) => s + lineTotal(it), 0)
+    : 0;
+  const total = productsOnly
+    ? productTotal + doneTreatmentTotal
+    : selectedItems.reduce((s, it) => s + lineTotal(it), 0);
   const hasSelectedTreatment = selectedTreatments.length > 0;
+
+  // Notify parent when treatment selection changes (drives "Start Treatment" button visibility)
+  useEffect(() => {
+    onTreatmentSelectionChange?.(hasSelectedTreatment);
+  }, [hasSelectedTreatment]);
+
+  // Auto-trigger collect when parent requests it (e.g. "Collect Payment" top button)
+  useEffect(() => {
+    if (collectTrigger > 0 && !rxLoading && lineItems.length > 0) {
+      handleCollect();
+    }
+  }, [collectTrigger, rxLoading]);
 
   const updateItem = (id: number, patch: Partial<LineItem>) => {
     setLineItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
@@ -192,7 +216,7 @@ export function CheckoutFlow({
     setLineItems(prev => [...prev, {
       id: newId, product: name, product_detail: "",
       basePrice, discountPct: 0, priceOverride: false,
-      isTreatment: false, isExtra: true,
+      isTreatment: false, isExtra: true, qty: 1,
     }]);
     setSelected(prev => [...prev, true]);
     setDiscountOpen(prev => [...prev, false]);
@@ -204,8 +228,14 @@ export function CheckoutFlow({
     if (!productsOnly && hasSelectedTreatment) {
       setPhase("treatment_otp");
     } else {
-      const items: ReceiptItem[] = selectedProducts.map(it => ({ name: it.product, cost: lineTotal(it) }));
-      setReceiptData({ items, total, type: "products" });
+      // In productsOnly mode, treatments are already done — include them on the receipt
+      const doneTreatments = productsOnly ? lineItems.filter(it => it.isTreatment) : [];
+      const doneTreatmentTotal = doneTreatments.reduce((s, it) => s + lineTotal(it), 0);
+      const items: ReceiptItem[] = [
+        ...doneTreatments.map(it => ({ name: it.qty > 1 ? `${it.product} ×${it.qty}` : it.product, cost: lineTotal(it) })),
+        ...selectedProducts.map(it => ({ name: it.qty > 1 ? `${it.product} ×${it.qty}` : it.product, cost: lineTotal(it) })),
+      ];
+      setReceiptData({ items, total: productTotal + doneTreatmentTotal, type: "products" });
       setPhase("receipt");
     }
   };
@@ -221,6 +251,34 @@ export function CheckoutFlow({
 
     const treatments = lineItems.filter(it => it.isTreatment);
     const products = lineItems.filter(it => !it.isTreatment);
+
+    const renderLockedTreatment = (it: LineItem) => (
+      <div key={it.id} className="rounded-xl border border-primary/20 bg-primary/5">
+        <div className="flex items-start gap-3 px-3 py-3">
+          <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold leading-tight">{it.product}</span>
+              <span className="text-[10px] font-semibold uppercase tracking-wide bg-primary/10 text-primary border border-primary/20 rounded px-1.5 py-0.5">
+                Done ✓
+              </span>
+            </div>
+            {it.product_detail && (
+              <div className="text-xs text-muted-foreground mt-0.5">{it.product_detail}</div>
+            )}
+          </div>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button onClick={() => updateItem(it.id, { qty: Math.max(1, it.qty - 1) })} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border bg-white transition-colors text-sm font-medium leading-none">−</button>
+            <span className="w-6 text-center text-xs font-semibold tabular-nums">{it.qty}</span>
+            <button onClick={() => updateItem(it.id, { qty: it.qty + 1 })} className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border bg-white transition-colors text-sm font-medium leading-none">+</button>
+          </div>
+          <div className="shrink-0 text-right">
+            <span className="text-base font-bold tabular-nums text-primary">{inr(lineTotal(it))}</span>
+            {it.qty > 1 && <div className="text-[10px] text-muted-foreground tabular-nums">{inr(it.basePrice)} × {it.qty}</div>}
+          </div>
+        </div>
+      </div>
+    );
 
     const renderItem = (it: LineItem, i: number) => {
       const globalIndex = lineItems.indexOf(it);
@@ -263,17 +321,35 @@ export function CheckoutFlow({
                 <div className="text-xs text-muted-foreground mt-0.5">{it.product_detail}</div>
               )}
             </div>
+            {/* Qty stepper */}
+            <div className="flex items-center gap-0.5 shrink-0">
+              <button
+                onClick={() => updateItem(it.id, { qty: Math.max(1, it.qty - 1) })}
+                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border bg-white transition-colors text-sm font-medium leading-none"
+              >−</button>
+              <span className="w-6 text-center text-xs font-semibold tabular-nums">{it.qty}</span>
+              <button
+                onClick={() => updateItem(it.id, { qty: it.qty + 1 })}
+                className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary border border-border bg-white transition-colors text-sm font-medium leading-none"
+              >+</button>
+            </div>
             {/* Price badge */}
             <div className="shrink-0 text-right">
               {it.isTreatment ? (
-                <span className="text-base font-bold tabular-nums text-primary">{inr(it.basePrice)}</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-base font-bold tabular-nums text-primary">{inr(final)}</span>
+                  {it.qty > 1 && <span className="text-[10px] text-muted-foreground tabular-nums">{inr(it.basePrice)} × {it.qty}</span>}
+                </div>
               ) : hasDiscount ? (
                 <div className="flex flex-col items-end">
-                  <span className="text-xs line-through text-muted-foreground tabular-nums">{inr(it.basePrice)}</span>
+                  <span className="text-xs line-through text-muted-foreground tabular-nums">{inr(it.basePrice * it.qty)}</span>
                   <span className="text-base font-bold text-emerald-700 tabular-nums leading-tight">{inr(final)}</span>
                 </div>
               ) : (
-                <span className="text-base font-bold tabular-nums text-emerald-700">{inr(it.basePrice)}</span>
+                <div className="flex flex-col items-end">
+                  <span className="text-base font-bold tabular-nums text-emerald-700">{inr(final)}</span>
+                  {it.qty > 1 && <span className="text-[10px] text-muted-foreground tabular-nums">{inr(it.basePrice)} × {it.qty}</span>}
+                </div>
               )}
             </div>
           </div>
@@ -350,7 +426,7 @@ export function CheckoutFlow({
             <div className="text-[11px] font-semibold uppercase tracking-wider text-violet-600 flex items-center gap-1.5">
               <Stethoscope className="h-3 w-3" /> In-Clinic Treatments
             </div>
-            {treatments.map((it) => renderItem(it, lineItems.indexOf(it)))}
+            {treatments.map((it) => productsOnly ? renderLockedTreatment(it) : renderItem(it, lineItems.indexOf(it)))}
           </div>
         )}
 
@@ -392,9 +468,7 @@ export function CheckoutFlow({
                 {hasSelectedTreatment && (
                   <span className="text-violet-700 font-semibold mr-2">{selectedTreatments.length} treatment{selectedTreatments.length !== 1 ? "s" : ""}</span>
                 )}
-                {selectedProducts.length > 0 && (
-                  <span className="font-bold text-base">{inr(total)}</span>
-                )}
+                <span className="font-bold text-base">{inr(total)}</span>
               </>
             ) : (
               <span className="text-muted-foreground text-xs">Nothing selected</span>
@@ -480,29 +554,12 @@ export function CheckoutFlow({
         )}
       </div>
       {otpConfirmed && (
-        <div className="space-y-2">
-          <button
-            onClick={() => {
-              // Also collect any selected products
-              const items: ReceiptItem[] = [
-                ...selectedTreatments.map(it => ({ name: it.product, cost: null })),
-                ...selectedProducts.map(it => ({ name: it.product, cost: lineTotal(it) })),
-              ];
-              const prodTotal = selectedProducts.reduce((s, it) => s + lineTotal(it), 0);
-              setReceiptData({ items, total: prodTotal, type: "treatment" });
-              setPhase("receipt");
-            }}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary/90 text-white px-4 py-2.5 text-sm font-semibold transition-colors"
-          >
-            <Receipt className="h-4 w-4" />Confirm &amp; generate receipt
-          </button>
-          <button
-            onClick={() => onStartTreatment ? onStartTreatment() : router.push(`/manager/appointments?open=${appointmentId}`)}
-            className="w-full flex items-center justify-center gap-2 rounded-lg border border-violet-400 bg-white hover:bg-violet-50 text-violet-700 px-4 py-2.5 text-sm font-semibold transition-colors"
-          >
-            <Stethoscope className="h-4 w-4" />Start treatment → Consent · Photos · Session
-          </button>
-        </div>
+        <button
+          onClick={() => onStartTreatment ? onStartTreatment() : router.push(`/manager/appointments?open=${appointmentId}`)}
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary hover:bg-primary/90 text-white px-4 py-2.5 text-sm font-semibold transition-colors"
+        >
+          <Stethoscope className="h-4 w-4" />Start treatment → Consent · Photos · Session
+        </button>
       )}
     </div>
   );

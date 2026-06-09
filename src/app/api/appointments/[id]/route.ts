@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 // These are actual columns on the appointments table
 const APPT_FIELDS = new Set([
   "service_type", "doctor_id", "disposition", "sub_disposition",
-  "lead_type", "campaign", "referred_by", "notes",
+  "lead_type", "campaign", "referred_by", "notes", "room_override",
 ]);
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {

@@ -1421,6 +1421,7 @@ export type AppointmentRow = {
   campaign: string | null;
   city: string | null;
   state: string | null;
+  room_override: string | null;
 };
 
 export function getAppointments(date: string, branchId?: number): AppointmentRow[] {
@@ -1433,7 +1434,7 @@ export function getAppointments(date: string, branchId?: number): AppointmentRow
            a.contact_booking_number, a.notes, a.referred_by,
            COALESCE(a.duration_minutes, 45) AS duration_minutes,
            a.disposition, a.sub_disposition, a.lead_type, a.campaign,
-           p.city, p.state
+           p.city, p.state, a.room_override
     FROM appointments a
     JOIN patients p ON p.id = a.patient_id
     JOIN branches b ON b.id = a.branch_id

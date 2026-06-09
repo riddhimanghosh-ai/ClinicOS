@@ -61,7 +61,9 @@ const ROOMS: { key: RoomKey; label: string; subtitle: string }[] = [
   { key: "laser",        label: "PainFree GDRC",           subtitle: "Waitlist room" },
 ];
 
-function getRoom(serviceType: string): RoomKey {
+function getRoom(serviceType: string, roomOverride?: string | null): RoomKey {
+  if (roomOverride && (["consultation","facial","peel","laser"] as string[]).includes(roomOverride))
+    return roomOverride as RoomKey;
   const s = serviceType.toLowerCase();
   if (s.includes("consultation")) return "consultation";
   if (s.includes("facial") || s.includes("hydra") || s.includes("glow")) return "facial";
@@ -416,7 +418,7 @@ export function AppointmentsClient({
 
               {/* Room rows */}
               {ROOMS.map(room => {
-                const roomAppts = visibleAppts.filter(a => getRoom(a.service_type) === room.key);
+                const roomAppts = visibleAppts.filter(a => getRoom(a.service_type, a.room_override) === room.key);
                 const bookedMinutes = roomAppts
                   .filter(a => a.status !== "no_show")
                   .reduce((acc, a) => acc + getDuration(a), 0);
@@ -857,6 +859,8 @@ function DetailDrawer({
   const [saving, setSaving] = useState(false);
   const [fnoSubmitted, setFnoSubmitted] = useState(false);
   const [sessionStarted, setSessionStarted] = useState(false);
+  const [rxTreatmentSelected, setRxTreatmentSelected] = useState(true);
+  const [rxCollectTrigger, setRxCollectTrigger] = useState(0);
 
   // Booking form state
   const [fields, setFields] = useState({
@@ -869,6 +873,7 @@ function DetailDrawer({
     sub_disposition:  appt.sub_disposition ?? "",
     referred_by:      appt.referred_by ?? "",
     notes:            appt.notes ?? "",
+    room_override:    appt.room_override ?? "",
   });
 
   // Treatment state
@@ -926,6 +931,7 @@ function DetailDrawer({
           sub_disposition: fields.sub_disposition,
           referred_by:     fields.referred_by,
           notes:           fields.notes,
+          room_override:   fields.room_override || null,
         }),
       });
       if (res.ok) {
@@ -1158,16 +1164,27 @@ function DetailDrawer({
             )}
             {appt.status === "consultation_done" && (
               <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
-                <div className="text-xs font-semibold text-teal-800">Consultation done ✓ — start treatment or mark done</div>
+                <div className="text-xs font-semibold text-teal-800">
+                  {rxTreatmentSelected ? "Consultation done ✓ — start treatment or mark done" : "Consultation done ✓ — collect payment for products"}
+                </div>
                 <div className="flex gap-2">
-                  <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 h-9"
-                    onClick={() => onStatusChange(appt.id, "in_treatment")}>
-                    Start Treatment →
-                  </Button>
-                  <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
-                    onClick={() => onStatusChange(appt.id, "done")}>
-                    Mark Done ✓
-                  </Button>
+                  {rxTreatmentSelected ? (
+                    <>
+                      <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 h-9"
+                        onClick={() => onStatusChange(appt.id, "in_treatment")}>
+                        Start Treatment →
+                      </Button>
+                      <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
+                        onClick={() => onStatusChange(appt.id, "done")}>
+                        Mark Done ✓
+                      </Button>
+                    </>
+                  ) : (
+                    <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
+                      onClick={() => { setTab("prescription"); setRxCollectTrigger(t => t + 1); }}>
+                      Collect Payment →
+                    </Button>
+                  )}
                 </div>
               </div>
             )}
@@ -1294,6 +1311,18 @@ function DetailDrawer({
                   <input value={fields.service_type}
                     onChange={e => setFields(p => ({ ...p, service_type: e.target.value }))}
                     className={INPUT_CLS} />
+                </Field>
+
+                <Field label="Room">
+                  <select value={fields.room_override}
+                    onChange={e => setFields(p => ({ ...p, room_override: e.target.value }))}
+                    className={INPUT_CLS}>
+                    <option value="">Auto (from service type)</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="facial">Facial Room GDRC</option>
+                    <option value="peel">Facial / Peel / Dr-Led GDRC</option>
+                    <option value="laser">PainFree GDRC (Waitlist)</option>
+                  </select>
                 </Field>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1583,6 +1612,10 @@ function DetailDrawer({
                     patientName={appt.patient_name}
                     serviceType={appt.service_type}
                     onClose={() => setTab("booking")}
+                    onStartTreatment={() => setTab("treatment")}
+                    onTreatmentSelectionChange={setRxTreatmentSelected}
+                    productsOnly={treatmentDone}
+                    collectTrigger={rxCollectTrigger}
                   />
                 </>
               )}
