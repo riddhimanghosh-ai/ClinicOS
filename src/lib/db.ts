@@ -555,6 +555,7 @@ export function initSchema(handle?: Database.Database): void {
   try { d.exec("ALTER TABLE appointments ADD COLUMN campaign TEXT"); } catch {}
   // seed_status stores the original demo status so resetDemoSchedule() can restore it
   try { d.exec("ALTER TABLE appointments ADD COLUMN seed_status TEXT"); } catch {}
+  try { d.exec("ALTER TABLE appointments ADD COLUMN room_override TEXT"); } catch {}
   // Backfill seed_status for KAYA-prefixed demo appointments that were seeded before this column existed
   try {
     d.exec(`
