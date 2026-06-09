@@ -375,7 +375,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     disposition TEXT,
     sub_disposition TEXT,
     lead_type TEXT DEFAULT 'call',
-    campaign TEXT
+    campaign TEXT,
+    room_override TEXT
 );
 
 CREATE TABLE IF NOT EXISTS practitioner_sessions (
