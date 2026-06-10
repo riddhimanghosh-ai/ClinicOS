@@ -123,7 +123,7 @@ export function purgeSessionPrescriptions(): void {
 // backfill capturing a stale/modified status.
 // ---------------------------------------------------------------------------
 const KAYA_SEED_STATUSES: Record<string, string> = {
-  KAYA200000: "done",
+  KAYA200000: "booked",
   KAYA200137: "in_consultation",
   KAYA200274: "consultation_done",
   KAYA200411: "arrived",          // Treatment & FnO: pending treatment

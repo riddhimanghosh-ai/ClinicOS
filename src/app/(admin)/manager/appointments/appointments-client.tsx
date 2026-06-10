@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save, ShoppingBag, Plus, Loader2, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, X, Clock, User, Phone, Mail, MapPin, Stethoscope, AlertTriangle, Tag, Camera, ClipboardList, FileText, CheckCircle2, Package, AlertCircle, Save, ShoppingBag, Plus, Loader2, Search, Mic, MicOff, KeyRound } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -862,6 +862,17 @@ function DetailDrawer({
   const [rxTreatmentSelected, setRxTreatmentSelected] = useState(true);
   const [rxCollectTrigger, setRxCollectTrigger] = useState(0);
 
+  // OTP for "Start Treatment" gate
+  const treatmentOtp = useRef(Math.floor(100000 + Math.random() * 900000).toString()).current;
+  const [showTreatmentOtp, setShowTreatmentOtp] = useState(false);
+  const [treatmentOtpInput, setTreatmentOtpInput] = useState("");
+  const [treatmentOtpConfirmed, setTreatmentOtpConfirmed] = useState(false);
+
+  // "End Recording" gate before showing Rx prescription
+  const [recordingEnded, setRecordingEnded] = useState(
+    !["consultation_done"].includes(appt.status)
+  );
+
   // Booking form state
   const [fields, setFields] = useState({
     appointment_time: appt.appointment_ts.slice(11, 16),
@@ -1162,7 +1173,7 @@ function DetailDrawer({
                 </Button>
               </div>
             )}
-            {appt.status === "consultation_done" && (
+            {appt.status === "consultation_done" && !showTreatmentOtp && (
               <div className="rounded-lg border border-teal-200 bg-teal-50 p-3 space-y-2">
                 <div className="text-xs font-semibold text-teal-800">
                   {rxTreatmentSelected ? "Consultation done ✓ — start treatment or mark done" : "Consultation done ✓ — collect payment for products"}
@@ -1171,7 +1182,7 @@ function DetailDrawer({
                   {rxTreatmentSelected ? (
                     <>
                       <Button className="flex-1 bg-orange-500 hover:bg-orange-600 text-white border-0 h-9"
-                        onClick={() => onStatusChange(appt.id, "in_treatment")}>
+                        onClick={() => setShowTreatmentOtp(true)}>
                         Start Treatment →
                       </Button>
                       <Button className="flex-1 bg-success hover:bg-emerald-700 text-white border-0 h-9"
@@ -1186,6 +1197,47 @@ function DetailDrawer({
                     </Button>
                   )}
                 </div>
+              </div>
+            )}
+            {appt.status === "consultation_done" && showTreatmentOtp && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-violet-800 flex items-center gap-1.5">
+                    <KeyRound className="h-3.5 w-3.5" />Patient OTP — Treatment Confirmation
+                  </div>
+                  <button onClick={() => { setShowTreatmentOtp(false); setTreatmentOtpInput(""); setTreatmentOtpConfirmed(false); }}
+                    className="text-muted-foreground hover:text-foreground"><X className="h-3.5 w-3.5" /></button>
+                </div>
+                <div className="rounded-xl border border-primary/20 bg-white px-4 py-3 text-center space-y-1">
+                  <div className="text-[10px] font-semibold uppercase tracking-widest text-violet-600">Share with patient</div>
+                  <div className="text-4xl font-bold tracking-[0.2em] font-mono text-violet-900">{treatmentOtp.slice(0,3)}-{treatmentOtp.slice(3)}</div>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={treatmentOtpInput}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g,"").slice(0,6);
+                    setTreatmentOtpInput(val);
+                    if (val === treatmentOtp) setTreatmentOtpConfirmed(true);
+                  }}
+                  placeholder="Patient enters code"
+                  className="w-full text-center text-2xl font-mono tracking-[0.3em] rounded-xl border border-primary/30 py-2.5 px-3 focus:outline-none focus:border-primary bg-white placeholder:text-muted-foreground/40 placeholder:text-sm placeholder:tracking-normal"
+                />
+                {treatmentOtpInput.length === 6 && !treatmentOtpConfirmed && (
+                  <div className="text-xs text-red-600 text-center">Incorrect code — try again</div>
+                )}
+                {treatmentOtpConfirmed && (
+                  <Button className="w-full bg-orange-500 hover:bg-orange-600 text-white border-0 h-9"
+                    onClick={() => {
+                      setShowTreatmentOtp(false);
+                      onStatusChange(appt.id, "in_treatment");
+                      setTab("treatment");
+                    }}>
+                    <Stethoscope className="h-4 w-4 mr-2" />OTP Verified — Start Treatment →
+                  </Button>
+                )}
               </div>
             )}
             {appt.status === "in_treatment" && (
@@ -1221,7 +1273,7 @@ function DetailDrawer({
             )}
 
             {/* Reschedule / no-show */}
-            {!["done","converted","no_show","rescheduled"].includes(appt.status) && (
+            {!["done","converted","no_show","rescheduled","in_treatment"].includes(appt.status) && (
               <div className="flex gap-2 pt-1">
                 {["booked","confirmed","arrived"].includes(appt.status) && (
                   <button className="flex-1 text-[11px] text-orange-600 border border-orange-200 rounded-md py-1.5 hover:bg-orange-50 transition-colors font-medium"
@@ -1559,14 +1611,10 @@ function DetailDrawer({
                         <div className="flex justify-center">
                           <input
                             type="number" min="0" value={item.actual}
-                            readOnly={item.mandatory}
-                            onChange={e => !item.mandatory && setBom(prev =>
+                            onChange={e => setBom(prev =>
                               prev.map(i => i.id === item.id ? { ...i, actual: Math.max(0, Number(e.target.value)) } : i)
                             )}
-                            className={"w-14 rounded border text-center text-sm px-1 py-1 focus:outline-none focus:ring-1 focus:ring-ring tabular-nums " +
-                              (item.mandatory
-                                ? "bg-secondary/60 border-border text-muted-foreground cursor-default"
-                                : "bg-background border-border hover:border-primary")}
+                            className="w-14 rounded border text-center text-sm px-1 py-1 focus:outline-none focus:ring-1 focus:ring-ring tabular-nums bg-background border-border hover:border-primary"
                           />
                         </div>
                         <div className="flex justify-center">
@@ -1600,6 +1648,27 @@ function DetailDrawer({
               {rxLocked ? (
                 <div className="rounded-md border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
                   Prescription available after the consultation is marked done.
+                </div>
+              ) : !recordingEnded ? (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-violet-200 bg-violet-50 p-5 text-center space-y-3">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-violet-500" />
+                      </span>
+                      <span className="text-xs font-semibold text-violet-700 uppercase tracking-wide">Recording Active</span>
+                    </div>
+                    <Mic className="h-10 w-10 text-violet-500 mx-auto" />
+                    <div className="text-sm font-semibold text-violet-900">Consultation recording in progress</div>
+                    <div className="text-xs text-violet-700">Stop the recording to generate the prescription from this session.</div>
+                  </div>
+                  <Button
+                    className="w-full bg-violet-600 hover:bg-violet-700 text-white h-11 gap-2"
+                    onClick={() => setRecordingEnded(true)}
+                  >
+                    <MicOff className="h-4 w-4" />End Recording &amp; Open Prescription
+                  </Button>
                 </div>
               ) : (
                 <>

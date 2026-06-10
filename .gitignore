@@ -10,3 +10,4 @@ out
 # SQLite WAL shim files (not the DB itself — committed for Vercel cold-start)
 data/*.db-shm
 data/*.db-wal
+.vercel

@@ -482,21 +482,15 @@ export function CheckoutFlow({
               <MessageSquare className="h-3.5 w-3.5" />
               Consultation only
             </button>
-            <button
-              onClick={handleCollect}
-              disabled={selectedItems.length === 0}
-              className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 text-white ${
-                hasSelectedTreatment
-                  ? "bg-primary hover:bg-primary/90"
-                  : "bg-success hover:bg-success/90"
-              }`}
-            >
-              {hasSelectedTreatment ? (
-                <><Stethoscope className="h-4 w-4" />Confirm treatment →</>
-              ) : (
-                <><Receipt className="h-4 w-4" />Collect {inr(total)} →</>
-              )}
-            </button>
+            {!hasSelectedTreatment && (
+              <button
+                onClick={handleCollect}
+                disabled={selectedItems.length === 0}
+                className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 text-white bg-success hover:bg-success/90"
+              >
+                <Receipt className="h-4 w-4" />Collect {inr(total)} →
+              </button>
+            )}
           </div>
         </div>
       </div>
